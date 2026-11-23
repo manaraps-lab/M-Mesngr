@@ -1,0 +1,111 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (c) 2010 - 2012 Qualia Digital Solutions.
+// Copyright (c) 2026 LAN Messenger.
+#pragma once
+
+#include <QDate>
+#include <QFont>
+#include <QStringList>
+#include <QTextBlockUserData>
+#include "core/definitions.h"
+#include "chatdefinitions.h"
+#include "messaging/xmlmessage.h"
+
+class QTextCharFormat;
+class QTextEdit;
+class QToolBar;
+class QColor;
+
+class QTextBlockData : public QTextBlockUserData {
+public:
+  QTextBlockData(QString id);
+  virtual ~QTextBlockData();
+
+  QString id;
+};
+
+struct SingleMessage {
+  MessageType type;
+  QString userId;
+  QString userName;
+  XmlMessage message;
+  QString id;
+  //  Lazy text signature cache (stored text is immutable).
+  mutable size_t textSigHash = 0;
+  mutable int textSigLen = 0;
+  mutable bool textSigOk = false;
+
+  SingleMessage() {}
+  SingleMessage(MessageType mType, QString szUserId, QString szUserName, XmlMessage xmlMessage, QString szId = QString()) {
+    type = mType;
+    userId = szUserId;
+    userName = szUserName;
+    message = xmlMessage;
+    id = szId;
+  }
+};
+
+QDataStream& operator<<(QDataStream& out, const SingleMessage& message);
+QDataStream& operator>>(QDataStream& in, SingleMessage& message);
+
+inline MessageType restoredHistoryType(int saved) {
+  if(saved == int(MT_GroupMessage))
+    return MT_GroupMessage;
+  if(saved == int(MT_Broadcast))
+    return MT_Broadcast;
+  return MT_Message;
+}
+
+inline bool isHistorySavable(MessageType type) {
+  return type == MT_Message || type == MT_GroupMessage || type == MT_Broadcast;
+}
+
+inline const char* historyDataKey(MessageType type) {
+  if(type == MT_Broadcast)
+    return XN_BROADCAST;
+  if(type == MT_GroupMessage)
+    return XN_GROUPMESSAGE;
+  return XN_MESSAGE;
+}
+
+class ChatHelper {
+public:
+  static void makeHtmlSafe(QString* lpszMessage);
+  static QDate dateForMsecs(qint64 msecs);
+  //  Low-level day comparison: (valid, timeless) == true. Date-strip
+  //  decisions must use shouldShowDateSeparator() below, not this.
+  static bool isNewDay(qint64 curMsecs, qint64 prevMsecs);
+  //  Single boundary rule for the day strip (timeless-bridge rule):
+  //  typing rows and timeless rows never open one, the first dated row
+  //  always does, otherwise only a new day after a dated predecessor.
+  static bool shouldShowDateSeparator(qint64 curMsecs, qint64 prevMsecs, bool isFirst,
+                                      bool isTyping);
+  static QString dateSeparatorLabel(const QDate& date, const QDate& today);
+  //  Color-emoji fallback families, emoji-first.
+  static const QStringList& emojiFallbackFamilies();
+  //  Emoji-first with the base family appended last: color emoji when the
+  //  color font is installed, its monochrome glyph instead of tofu when not.
+  //  Base-first would regress color (the base font usually owns a monochrome
+  //  glyph), so the order matters.
+  static QStringList emojiFamiliesWithBase(const QString& baseFamily);
+  //  Emoji runs get the color font, the rest stays in the base font.
+  //  Matched by Unicode ranges, not by the picker list.
+  //  isEmojiRun is a potential starter: BMP symbols default to text
+  //  presentation (TR51) and need a trailing VS16, which emojiRunLength checks.
+  static bool isEmojiRun(uint ucs4);
+  static bool isEmojiContinuation(uint ucs4);
+  //  UTF-16 length of the run starting at pos, 0 when pos is not a start.
+  static int emojiRunLength(const QString& text, int pos);
+  //  Wrap emoji runs of escaped HTML in an emoji-font span.
+  //  Input must have passed makeHtmlSafe. baseFamily is appended last
+  //  (see emojiFamiliesWithBase); empty keeps emoji-only spans.
+  static QString wrapEmojiRuns(const QString& safeHtml, const QString& baseFamily = QString());
+  static QString emojiSpanStart(const QString& baseFamily = QString());
+  static QString emojiSpan(const QString& run, const QString& baseFamily = QString());
+  static void mergeFormatOverDocument(QTextEdit* edit, const QTextCharFormat& format);
+  static void clearFamiliesOverDocument(QTextEdit* edit);
+  //  Composer color via palette, not stylesheet (keeps Disabled/placeholder native).
+  static void applyComposerColor(QTextEdit* edit, const QColor& color);
+  //  Compact style icons (PM_SmallIconSize).
+  static void applyCompactToolBarIcons(QToolBar* toolBar);
+};

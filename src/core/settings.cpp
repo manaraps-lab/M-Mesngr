@@ -1,0 +1,485 @@
+﻿// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (c) 2010 - 2012 Qualia Digital Solutions.
+// Copyright (c) 2026 LAN Messenger.
+#include "settings.h"
+#include "stdlocation.h"
+#include "core/lmccategories.h"
+#ifdef Q_OS_UNIX
+#include <pwd.h>
+#include <unistd.h>
+#endif
+
+lmcSettingsBase::lmcSettingsBase(void)
+    : QSettings() {
+}
+
+lmcSettingsBase::lmcSettingsBase(const QString& fileName, Format format)
+    : QSettings(fileName, format) {
+}
+
+lmcSettingsBase::lmcSettingsBase(Format format, Scope scope, const QString& organization, const QString& application)
+    : QSettings(format, scope, organization, application) {
+}
+
+lmcSettingsBase::~lmcSettingsBase(void) {
+}
+
+void lmcSettingsBase::setValue(const QString& key, const QVariant& value, const QVariant& defaultValue) {
+  if(value != defaultValue)
+    QSettings::setValue(key, value);
+  else
+    remove(key);
+}
+
+//	migrate settings from older versions to new format
+//	Returns false if existing settings cannot be migrated, else true
+bool lmcSettings::migrateSettings(void) {
+  //	Make sure any pending write operation is completed
+  sync();
+  //	If settings file does not exist, return true indicating no error
+  if(!QFile::exists(fileName()))
+    return true;
+
+  //	Migrate the settings
+  bool migrated = migrateSettings(fileName());
+  //	Sync the settings with the settings file
+  sync();
+  return migrated;
+}
+
+//	Load settings from the specified config file and overwrite corresponding
+//	application settings
+bool lmcSettings::loadFromConfig(const QString& configFile) {
+  if(!QFile::exists(configFile))
+    return false;
+
+  if(!Helper::copyFile(configFile, StdLocation::tempConfigFile()))
+    return false;
+
+  if(!migrateSettings(StdLocation::tempConfigFile()))
+    return false;
+
+  QVariant value;
+  QSettings extSettings(StdLocation::tempConfigFile(), QSettings::IniFormat);
+
+  value = extSettings.value(IDS_AUTOSTART);
+  if(value.isValid())
+    setValue(IDS_AUTOSTART, value);
+  value = extSettings.value(IDS_AUTOSHOW);
+  if(value.isValid())
+    setValue(IDS_AUTOSHOW, value);
+
+  value = extSettings.value(IDS_SYSTRAY);
+  if(value.isValid())
+    setValue(IDS_SYSTRAY, value);
+  value = extSettings.value(IDS_MINIMIZETRAY);
+  if(value.isValid())
+    setValue(IDS_MINIMIZETRAY, value);
+  value = extSettings.value(IDS_SINGLECLICKTRAY);
+  if(value.isValid())
+    setValue(IDS_SINGLECLICKTRAY, value);
+  value = extSettings.value(IDS_SYSTRAYMSG);
+  if(value.isValid())
+    setValue(IDS_SYSTRAYMSG, value);
+  value = extSettings.value(IDS_ALLOWSYSTRAYMIN);
+  if(value.isValid())
+    setValue(IDS_ALLOWSYSTRAYMIN, value);
+  value = extSettings.value(IDS_LANGUAGE);
+  if(value.isValid())
+    setValue(IDS_LANGUAGE, value);
+
+  value = extSettings.value(IDS_USERNAME);
+  if(value.isValid())
+    setValue(IDS_USERNAME, value);
+  value = extSettings.value(IDS_USERFIRSTNAME);
+  if(value.isValid())
+    setValue(IDS_USERFIRSTNAME, value);
+  value = extSettings.value(IDS_USERLASTNAME);
+  if(value.isValid())
+    setValue(IDS_USERLASTNAME, value);
+  value = extSettings.value(IDS_USERABOUT);
+  if(value.isValid())
+    setValue(IDS_USERABOUT, value);
+  value = extSettings.value(IDS_USERID);
+  if(value.isValid())
+    setValue(IDS_USERID, value);
+  value = extSettings.value(IDS_REFRESHTIME);
+  if(value.isValid())
+    setValue(IDS_REFRESHTIME, value);
+
+  value = extSettings.value(IDS_MESSAGETOP);
+  if(value.isValid())
+    setValue(IDS_MESSAGETOP, value);
+  value = extSettings.value(IDS_PUBMESSAGEPOP);
+  if(value.isValid())
+    setValue(IDS_PUBMESSAGEPOP, value);
+  value = extSettings.value(IDS_ALLOWLINKS);
+  if(value.isValid())
+    setValue(IDS_ALLOWLINKS, value);
+  value = extSettings.value(IDS_PATHTOLINK);
+  if(value.isValid())
+    setValue(IDS_PATHTOLINK, value);
+  value = extSettings.value(IDS_TRIMMESSAGE);
+  if(value.isValid())
+    setValue(IDS_TRIMMESSAGE, value);
+  value = extSettings.value(IDS_FONT);
+  if(value.isValid())
+    setValue(IDS_FONT, value);
+  value = extSettings.value(IDS_COLOR);
+  if(value.isValid())
+    setValue(IDS_COLOR, value);
+  value = extSettings.value(IDS_FONTSIZE);
+  if(value.isValid())
+    setValue(IDS_FONTSIZE, value);
+
+  value = extSettings.value(IDS_HISTORY);
+  if(value.isValid())
+    setValue(IDS_HISTORY, value);
+  value = extSettings.value(IDS_SYSHISTORYPATH);
+  if(value.isValid())
+    setValue(IDS_SYSHISTORYPATH, value);
+  value = extSettings.value(IDS_FILEHISTORY);
+  if(value.isValid())
+    setValue(IDS_FILEHISTORY, value);
+
+  value = extSettings.value(IDS_ALERT);
+  if(value.isValid())
+    setValue(IDS_ALERT, value);
+  value = extSettings.value(IDS_NOBUSYALERT);
+  if(value.isValid())
+    setValue(IDS_NOBUSYALERT, value);
+  value = extSettings.value(IDS_NODNDALERT);
+  if(value.isValid())
+    setValue(IDS_NODNDALERT, value);
+  value = extSettings.value(IDS_SOUND);
+  if(value.isValid())
+    setValue(IDS_SOUND, value);
+  value = extSettings.value(IDS_NOBUSYSOUND);
+  if(value.isValid())
+    setValue(IDS_NOBUSYSOUND, value);
+  value = extSettings.value(IDS_NODNDSOUND);
+  if(value.isValid())
+    setValue(IDS_NODNDSOUND, value);
+
+  value = extSettings.value(IDS_TIMEOUT);
+  if(value.isValid())
+    setValue(IDS_TIMEOUT, value);
+  value = extSettings.value(IDS_MAXRETRIES);
+  if(value.isValid())
+    setValue(IDS_MAXRETRIES, value);
+  QStringList broadcastList;
+  int size = extSettings.beginReadArray(IDS_BROADCASTHDR);
+  for(int index = 0; index < size; index++) {
+    extSettings.setArrayIndex(index);
+    broadcastList.append(extSettings.value(IDS_BROADCAST).toString());
+  }
+  extSettings.endArray();
+  if(size > 0) {
+    beginWriteArray(IDS_BROADCASTHDR);
+    for(int index = 0; index < size; index++) {
+      setArrayIndex(index);
+      setValue(IDS_BROADCAST, broadcastList.at(index));
+    }
+    endArray();
+  }
+  value = extSettings.value(IDS_MULTICAST);
+  if(value.isValid())
+    setValue(IDS_MULTICAST, value);
+  value = extSettings.value(IDS_UDPPORT);
+  if(value.isValid())
+    setValue(IDS_UDPPORT, value);
+  value = extSettings.value(IDS_TCPPORT);
+  if(value.isValid())
+    setValue(IDS_TCPPORT, value);
+
+  value = extSettings.value(IDS_AUTOFILE);
+  if(value.isValid())
+    setValue(IDS_AUTOFILE, value);
+  value = extSettings.value(IDS_AUTOSHOWFILE);
+  if(value.isValid())
+    setValue(IDS_AUTOSHOWFILE, value);
+  value = extSettings.value(IDS_FILETOP);
+  if(value.isValid())
+    setValue(IDS_FILETOP, value);
+  value = extSettings.value(IDS_USERLISTVIEW);
+  if(value.isValid())
+    setValue(IDS_USERLISTVIEW, value);
+  value = extSettings.value(IDS_STATUSTOOLTIP);
+  if(value.isValid())
+    setValue(IDS_STATUSTOOLTIP, value);
+
+  value = extSettings.value(IDS_SENDKEYMOD);
+  if(value.isValid())
+    setValue(IDS_SENDKEYMOD, value);
+
+  setValue(IDS_VERSION, IDA_VERSION);
+  sync();
+
+  QFile::remove(StdLocation::tempConfigFile());
+
+  return true;
+}
+
+QString lmcSettings::resolveAutoStartDir(const QString& xdgConfigHome, const QString& homeEnv,
+                                         const QString& fallbackHome) {
+  //  Per XDG: empty, whitespace-only or relative XDG_CONFIG_HOME is ignored.
+  const QString xdg = xdgConfigHome.trimmed();
+  if(!xdg.isEmpty() && QDir::isAbsolutePath(xdg))
+    return xdg + QStringLiteral("/autostart");
+  //  Same strictness for HOME: whitespace-only or relative values are ignored
+  //  so a bogus HOME cannot produce a relative autostart path.
+  const QString home = homeEnv.trimmed();
+  if(!home.isEmpty() && QDir::isAbsolutePath(home))
+    return home + QStringLiteral("/.config/autostart");
+  return fallbackHome + QStringLiteral("/.config/autostart");
+}
+
+QString lmcSettings::systemAutoStartDir(void) {
+  const QString xdg = qEnvironmentVariable("XDG_CONFIG_HOME");
+  const QString home = qEnvironmentVariable("HOME");
+  QString fallback = QDir::homePath();
+  //  QDir::homePath() echoes $HOME on Unix, so under a bogus HOME the
+  //  fallback itself would be whitespace-only or relative. Bypass the
+  //  environment via the passwd database to keep the result absolute.
+  if(fallback.trimmed().isEmpty() || !QDir::isAbsolutePath(fallback.trimmed())) {
+#ifdef Q_OS_UNIX
+    const struct passwd* pw = getpwuid(getuid());
+    if(pw && pw->pw_dir && *pw->pw_dir) {
+      const QString pwHome = QString::fromLocal8Bit(pw->pw_dir).trimmed();
+      if(!pwHome.isEmpty() && QDir::isAbsolutePath(pwHome))
+        fallback = pwHome;
+    }
+#endif
+  }
+  return resolveAutoStartDir(xdg, home, fallback);
+}
+
+void lmcSettings::setAutoStart(bool on) {
+#ifdef Q_OS_WIN
+  QSettings settings("HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Run",
+                     QSettings::NativeFormat);
+  if(on)
+    settings.setValue(IDA_TITLE, QDir::toNativeSeparators(QApplication::applicationFilePath()));
+  else
+    settings.remove(IDA_TITLE);
+#endif
+
+#ifdef Q_OS_MAC
+  Q_UNUSED(on);
+#endif
+
+#if defined(Q_OS_UNIX) && !defined(Q_OS_MAC)
+  //  get the path of .desktop file
+  QDir dir(systemAutoStartDir());
+  //  TODO(2027-11): drop this legacy migration (~1 year after the rename to
+  //  io.github.lanmessenger.lmc.desktop). One-shot migration from the
+  //  pre-canonical name. Runs on every start (see lmcCore::start) and on every
+  //  toggle, so an old entry left by a previous version cannot linger with a
+  //  stale Icon/StartupWMClass.
+  const QString oldFileName = dir.absoluteFilePath(QStringLiteral("lmc.desktop"));
+  if(QFile::exists(oldFileName)) {
+    QFile oldFile(oldFileName);
+    if(!oldFile.remove())
+      qCWarning(lmcApp) << "AutoStart: cannot remove old entry" << oldFileName
+                        << oldFile.errorString();
+  }
+  QString fileName = dir.absoluteFilePath(QStringLiteral(LMC_DESKTOP_ID ".desktop"));
+  //	delete the file if autostart is set to false
+  if(!on) {
+    if(QFile::exists(fileName)) {
+      QFile entry(fileName);
+      if(!entry.remove())
+        qCWarning(lmcApp) << "AutoStart: cannot remove entry" << fileName
+                          << entry.errorString();
+    }
+    return;
+  }
+
+  if(!dir.exists())
+    if(!dir.mkpath(dir.absolutePath()))
+      qCWarning(lmcApp) << "AutoStart: cannot create dir" << dir.absolutePath();
+  QFile file(fileName);
+  if(!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+    qCWarning(lmcApp) << "AutoStart: cannot write" << fileName << file.errorString();
+    return;
+  }
+  QTextStream stream(&file);
+  Helper::setUtf8Stream(stream);
+  stream.setGenerateByteOrderMark(false);
+  stream << "[Desktop Entry]\n";
+  stream << "Version=1.0\n";
+  stream << "Type=Application\n";
+  stream << "Name=" << IDA_TITLE << "\n";
+  stream << "Comment=Send and receive instant messages\n";
+  stream << "Icon=" LMC_DESKTOP_ID "\n";
+  stream << "Exec=\"" << QDir::toNativeSeparators(QApplication::applicationFilePath()) << "\"\n";
+  //  Must match the X11 WM_CLASS class ("lmc"), not the desktop basename.
+  //  Verified with xprop: class = applicationName ("lmc"); desktopFileName
+  //  only drives the Wayland app-id.
+  stream << "StartupWMClass=lmc\n";
+  stream << "Terminal=false\n";
+  file.close();
+#endif
+}
+
+//	The function expects the config file to exist. Validation must be done
+//	prior to calling the function.
+bool lmcSettings::migrateSettings(const QString& configFile) {
+  lmcSettingsBase settings(configFile, QSettings::IniFormat);
+
+  QString version = settings.value(IDS_VERSION, IDS_VERSION_VAL).toString();
+
+  //	Check if settings can be migrated, else reset settings and return false
+  //	If the settings are from a later version, its deemed non migratable
+  if(Helper::compareVersions(IDA_VERSION, version) < 0) {
+    QFile::remove(configFile);
+    return false;
+  }
+
+  //	Migrate settings from version 1.2.10 and older
+  //	Any version before 1.2.10 will also return 1.2.10 as the version since its the
+  //	default value
+  if(Helper::compareVersions(version, "1.2.10") == 0) {
+    //	The group settings were changed in v1.2.16
+    //	Groups now have both an id and a name. All the existing groups in the
+    //	settings are assigned a unique id. The general group is assigned a special
+    //	unique id that is predefined. The user group mapping is done with user id
+    //	and group id.
+    QList<Group> groupList;
+    QHash<QString, QString> groupIdHash;
+    QMap<QString, QString> userGroupMap;
+
+    int size = settings.beginReadArray(IDS_GROUPHDR);
+    for(int index = 0; index < size; index++) {
+      settings.setArrayIndex(index);
+      QString groupName = settings.value(IDS_GROUP).toString();
+      QString groupId = (groupName == GRP_DEFAULT) ? GRP_DEFAULT_ID : Helper::getUuid();
+      groupList.append(Group(groupId, groupName));
+      groupIdHash.insert(groupName, groupId);
+    }
+    settings.endArray();
+
+    if(groupList.count() == 0)
+      groupList.append(Group(GRP_DEFAULT_ID, GRP_DEFAULT));
+
+    size = settings.beginReadArray(IDS_GROUPMAPHDR);
+    for(int index = 0; index < size; index++) {
+      settings.setArrayIndex(index);
+      QString userId = settings.value(IDS_USER).toString();
+      QString groupName = settings.value(IDS_GROUP).toString();
+      QString groupId = groupIdHash.value(groupName);
+      userGroupMap.insert(userId, groupId);
+    }
+    settings.endArray();
+
+    // now save settings in the new format
+    settings.beginWriteArray(IDS_GROUPHDR);
+    for(int index = 0; index < groupList.count(); index++) {
+      settings.setArrayIndex(index);
+      settings.setValue(IDS_GROUP, groupList[index].id);
+      settings.setValue(IDS_GROUPNAME, groupList[index].name);
+    }
+    settings.endArray();
+
+    settings.beginWriteArray(IDS_GROUPMAPHDR);
+    QMapIterator<QString, QString> i(userGroupMap);
+    int count = 0;
+    while(i.hasNext()) {
+      settings.setArrayIndex(count);
+      i.next();
+      settings.setValue(IDS_USER, i.key());
+      settings.setValue(IDS_GROUP, i.value());
+      count++;
+    }
+    settings.endArray();
+  }
+  //	End of migration from 1.2.10
+
+  //	Migrate settings if version less than 1.2.25
+  if(Helper::compareVersions(version, "1.2.25") < 0) {
+    //	Change the refresh interval to reduce network load
+    int refreshTime = settings.value(IDS_REFRESHTIME, IDS_REFRESHTIME_VAL).toInt();
+    if(refreshTime < IDS_REFRESHTIME_VAL)
+      settings.setValue(IDS_REFRESHTIME, IDS_REFRESHTIME_VAL);
+
+    //	Group settings (except group tree item expanded info) are now saved in a
+    //	separate group file. Copy group details from settings file to group file
+    QHash<QString, QString> groupIdHash;
+    QMap<QString, QString> userGroupMap;
+
+    int size = settings.beginReadArray(IDS_GROUPHDR);
+    for(int index = 0; index < size; index++) {
+      settings.setArrayIndex(index);
+      QString groupId = settings.value(IDS_GROUP).toString();
+      QString groupName = settings.value(IDS_GROUPNAME).toString();
+      groupIdHash.insert(groupId, groupName);
+    }
+    settings.endArray();
+
+    size = settings.beginReadArray(IDS_GROUPMAPHDR);
+    for(int index = 0; index < size; index++) {
+      settings.setArrayIndex(index);
+      QString user = settings.value(IDS_USER).toString();
+      QString group = settings.value(IDS_GROUP).toString();
+      userGroupMap.insert(user, group);
+    }
+    settings.endArray();
+
+    QSettings groupSettings(StdLocation::groupFile(), QSettings::IniFormat);
+    groupSettings.beginWriteArray(IDS_GROUPHDR);
+    QHashIterator<QString, QString> it(groupIdHash);
+    int count = 0;
+    while(it.hasNext()) {
+      groupSettings.setArrayIndex(count);
+      it.next();
+      groupSettings.setValue(IDS_GROUP, it.key());
+      groupSettings.setValue(IDS_GROUPNAME, it.value());
+      count++;
+    }
+    groupSettings.endArray();
+
+    groupSettings.beginWriteArray(IDS_GROUPMAPHDR);
+    QMapIterator<QString, QString> i(userGroupMap);
+    count = 0;
+    while(i.hasNext()) {
+      groupSettings.setArrayIndex(count);
+      i.next();
+      groupSettings.setValue(IDS_USER, i.key());
+      groupSettings.setValue(IDS_GROUP, i.value());
+      count++;
+    }
+    groupSettings.endArray();
+  }
+  //	End of migration to 1.2.25
+
+  //	Migrate settings if version less than 1.2.28
+  if(Helper::compareVersions(version, "1.2.28") < 0) {
+    //	Broadcast list used instead of single broadcast address
+    //	Remove old entry from settings
+    settings.remove(IDS_BROADCAST_OLD);
+  }
+  //	End of migration to 1.2.28
+
+  // Migrate settings if version less than 1.2.30
+  if(Helper::compareVersions(version, "1.2.30") < 0) {
+    //	The old group settings were still present in the settings file though
+    //	group settings are now saved to a different file.
+    //	Remove group settings from application settings file
+    settings.beginGroup(IDS_GROUPHDR);
+    settings.remove("");
+    settings.endGroup();
+
+    settings.beginGroup(IDS_GROUPMAPHDR);
+    settings.remove("");
+    settings.endGroup();
+  }
+
+  if(Helper::compareVersions(version, "1.3.3") < 0) {
+    if(settings.value(IDS_TCPPORT, IDS_TCPPORT_VAL).toInt() == IDS_TCPPORT_LEGACY_VAL)
+      settings.remove(IDS_TCPPORT);
+  }
+
+  settings.setValue(IDS_VERSION, IDA_VERSION);
+  settings.sync();
+  return true;
+}
