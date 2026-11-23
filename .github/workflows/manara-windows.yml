@@ -19,7 +19,6 @@ jobs:
       PKG_VERSION: ${{ format('0.1.0.{0}', github.run_number) }}
     steps:
       - uses: actions/checkout@v7
-        with:
 
       # Explicit prohibition instead of compound conditions below: choco
       # OpenSSL exists only for fast test builds. Whatever ships links vcpkg
