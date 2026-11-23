@@ -1,0 +1,52 @@
+/* MANARA Messenger - light. Generated from docs/design/tokens.json.
+ * Install: copy to the user theme folder as custom.qss (see docs/THEME.md).
+ * Object names below are the real ones from the .ui files (verified against
+ * src/gui/*/*.ui); not yet checked visually on Windows. */
+
+QWidget#MainWindow, QWidget#ChatWindow, QWidget#TransferWindow, QDialog#SettingsDialog {
+  background: #F5F7FB; color: #0F1A3A;
+}
+
+/* ---- main window ---- */
+QFrame#frame { background: #FFFFFF; border: 1px solid #E3E8F1; border-radius: 12px; }
+QLabel#lblUserName { color: #0F1A3A; font-weight: 600; }
+QLabel#lblStatus { color: #5B6785; }
+QLineEdit#txtNote { background: transparent; border: 1px solid transparent; border-radius: 8px; color: #5B6785; padding: 2px 6px; }
+QLineEdit#txtNote:hover, QLineEdit#txtNote:focus { background: #FFFFFF; border-color: #D9E0EE; color: #0F1A3A; }
+QWidget#wgtToolBar { background: #FFFFFF; border-bottom: 1px solid #E3E8F1; }
+QTreeWidget#tvUserList { background: #FFFFFF; border: 1px solid #E3E8F1; border-radius: 12px; outline: 0; }
+QTreeWidget#tvUserList::item { padding: 6px; border-radius: 8px; }
+QTreeWidget#tvUserList::item:hover { background: #EAF1FD; }
+QTreeWidget#tvUserList::item:selected { background: #EAF1FD; border: 1px solid #CFE0FA; color: #0F1A3A; }
+
+/* ---- chat window ---- */
+QTextEdit#txtMessage { background: #FFFFFF; border: 1px solid #D9E0EE; border-radius: 12px; color: #0F1A3A; padding: 6px; selection-background-color: #1E4FC2; selection-color: #FFFFFF; }
+QTextEdit#txtMessage:focus { border-color: #1E4FC2; }
+QToolBar#toolBar { background: transparent; border: none; spacing: 4px; }
+QSplitter#splitter::handle { background: #E3E8F1; }
+
+/* ---- transfer window ---- */
+QListView#lvTransferList { background: #FFFFFF; border: 1px solid #E3E8F1; border-radius: 12px; outline: 0; }
+QWidget#TransferWindow QPushButton#btnClear, QWidget#TransferWindow QPushButton#btnClose { min-height: 28px; }
+
+/* ---- buttons (all windows) ---- */
+QPushButton { background: #FFFFFF; color: #0F1A3A; border: 1px solid #D9E0EE; border-radius: 8px; padding: 5px 14px; }
+QPushButton:hover { border-color: #1E4FC2; }
+QPushButton:pressed { background: #EAF1FD; }
+QPushButton:disabled { color: #5B6785; background: #F5F7FB; }
+QPushButton:default { background: qlineargradient(x1:0,y1:0,x2:0,y2:1, stop:0 #2C6BD8, stop:1 #1B3D9F); color: #FFFFFF; border: 1px solid #1B3D9F; }
+
+/* ---- settings ---- */
+QListWidget#lvCategories { background: #FFFFFF; border: 1px solid #E3E8F1; border-radius: 12px; outline: 0; }
+QListWidget#lvCategories::item { padding: 8px 10px; border-radius: 8px; }
+QListWidget#lvCategories::item:selected { background: #EAF1FD; color: #0F1A3A; border: 1px solid #CFE0FA; }
+QGroupBox { border: 1px solid #E3E8F1; border-radius: 10px; margin-top: 10px; padding-top: 8px; }
+QGroupBox::title { subcontrol-origin: margin; left: 10px; padding: 0 4px; color: #5B6785; }
+QLineEdit, QPlainTextEdit, QSpinBox, QComboBox { background: #FFFFFF; color: #0F1A3A; border: 1px solid #D9E0EE; border-radius: 8px; padding: 3px 6px; }
+QLineEdit:focus, QPlainTextEdit:focus, QSpinBox:focus, QComboBox:focus { border-color: #1E4FC2; }
+QCheckBox, QRadioButton, QLabel { color: #0F1A3A; }
+
+QScrollBar:vertical { background: transparent; width: 10px; margin: 0; }
+QScrollBar::handle:vertical { background: #D9E0EE; border-radius: 5px; min-height: 24px; }
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }
+QToolTip { background: #FFFFFF; color: #0F1A3A; border: 1px solid #D9E0EE; padding: 4px 6px; }

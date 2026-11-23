@@ -1,0 +1,156 @@
+{
+  "version": 1,
+  "displayName": "Classic Native Slate",
+  "_comment": "Corners are explicit per layout: outgoing nodes carry hand-mirrored values. Outgoing body text is #FFFFFF both modes. Ships 7 layout_*: incoming/outgoing split into series-start and in-series (_next) trees.",
+  "viewPadding": [0, 8, 8, 8],
+  "avatar": {
+    "size": 28,
+    "shape": "circle"
+  },
+  "header": {
+    "senderWeight": 600,
+    "timeFormat": "HH:mm",
+    "outgoingYouLabel": true,
+    "senderColor": ["#64748B", "#94A3B8"],
+    "timeColor": ["#64748B", "#94A3B8"]
+  },
+  "text": ["#1E293B", "#F1F5F9"],
+  "page": ["#F4F5F7", "#0F172A"],
+  "dateSeparator": {
+    "textColor": ["#64748B", "#94A3B8"],
+    "bg": ["#E6EBF1", "#1C2739"],
+    "border": ["#CBD5E1", "#334155"],
+    "corners": [12, 12, 12, 12],
+    "padding": [2, 8, 2, 8],
+    "margins": [12, 4],
+    "fontWeight": 500
+  },
+  "layout_incoming": {
+    "type": "hbox",
+    "gap": 8,
+    "children": [
+      {
+        "type": "avatar"
+      },
+      {
+        "type": "vbox",
+        "gap": 2,
+        "stretch": 1,
+        "children": [
+          {
+            "type": "header",
+            "items": ["sender", "time"],
+            "senderColor": ["#1E293B", "#F1F5F9"]
+          },
+          {
+            "type": "body",
+            "corners": [12, 12, 12, 2],
+            "bg": ["gradient(#FFFFFF, #F8F9FA)", "gradient(#1E293B, #172033)"],
+            "border": ["#E2E8F0", "#334155"],
+            "linkColor": ["#2563EB", "#60A5FA"],
+            "padding": [10, 12, 10, 12],
+            "marginTop": 8,
+            "maxWidthPct": 84
+          }
+        ]
+      }
+    ]
+  },
+  "layout_incoming_next": {
+    "type": "vbox",
+    "gap": 0,
+    "children": [
+      {
+        "type": "body",
+        "corners": [2, 12, 12, 2],
+        "bg": ["gradient(#FFFFFF, #F8F9FA)", "gradient(#1E293B, #172033)"],
+        "border": ["#E2E8F0", "#334155"],
+        "linkColor": ["#2563EB", "#60A5FA"],
+        "padding": [10, 12, 10, 12],
+        "marginTop": 2,
+        "maxWidthPct": 84
+      }
+    ]
+  },
+  "layout_outgoing": {
+    "type": "vbox",
+    "gap": 2,
+    "children": [
+      {
+        "type": "header",
+        "items": ["time"],
+        "senderColor": ["#1E293B", "#F1F5F9"]
+      },
+      {
+        "type": "body",
+        "corners": [12, 12, 2, 12],
+        "bg": ["gradient(#2563EB, #1D4ED8)", "gradient(#3B82F6, #2563EB)"],
+        "textColor": "#FFFFFF",
+        "linkColor": "#FFE082",
+        "padding": [10, 12, 10, 12],
+        "marginTop": 8,
+        "maxWidthPct": 84
+      }
+    ]
+  },
+  "layout_outgoing_next": {
+    "type": "vbox",
+    "gap": 0,
+    "children": [
+      {
+        "type": "body",
+        "corners": [12, 2, 2, 12],
+        "bg": ["gradient(#2563EB, #1D4ED8)", "gradient(#3B82F6, #2563EB)"],
+        "textColor": "#FFFFFF",
+        "linkColor": "#FFE082",
+        "padding": [10, 12, 10, 12],
+        "marginTop": 2,
+        "maxWidthPct": 84
+      }
+    ]
+  },
+  "layout_system": {
+    "type": "vbox",
+    "gap": 0,
+    "children": [
+      {
+        "type": "body",
+        "textColor": ["#64748B", "#94A3B8"],
+        "linkColor": ["#2563EB", "#60A5FA"],
+        "padding": [0, 4, 4, 4],
+        "marginTop": 0
+      }
+    ]
+  },
+  "layout_broadcast": {
+    "type": "vbox",
+    "gap": 0,
+    "children": [
+      {
+        "type": "body",
+        "corners": [8, 8, 8, 8],
+        "bg": ["#FEF3C7", "#451A03"],
+        "border": ["#F59E0B", "#B45309"],
+        "linkColor": ["#2563EB", "#60A5FA"],
+        "padding": [10, 12, 10, 12],
+        "marginTop": 8
+      }
+    ]
+  },
+  "layout_request": {
+    "type": "vbox",
+    "gap": 0,
+    "children": [
+      {
+        "type": "fileCard",
+        "corners": [12, 12, 12, 12],
+        "bg": ["gradient(#FFFFFF, #F8F9FA)", "gradient(#1E293B, #172033)"],
+        "border": ["#CBD5E1", "#334155"],
+        "linkColor": ["#2563EB", "#60A5FA"],
+        "padding": [10, 12, 10, 12],
+        "marginTop": 8,
+        "maxWidthPct": 84
+      }
+    ]
+  }
+}

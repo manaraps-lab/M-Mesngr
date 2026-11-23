@@ -1,0 +1,156 @@
+{
+  "version": 1,
+  "displayName": "MANARA",
+  "_comment": "Corners are explicit per layout: outgoing nodes carry hand-mirrored values. Outgoing body text is #FFFFFF both modes. Ships 7 layout_*: incoming/outgoing split into series-start and in-series (_next) trees.",
+  "viewPadding": [0, 8, 8, 8],
+  "avatar": {
+    "size": 28,
+    "shape": "circle"
+  },
+  "header": {
+    "senderWeight": 600,
+    "timeFormat": "HH:mm",
+    "outgoingYouLabel": true,
+    "senderColor": ["#5B6785", "#A3B1D6"],
+    "timeColor": ["#5B6785", "#A3B1D6"]
+  },
+  "text": ["#0F1A3A", "#EAF0FF"],
+  "page": ["#F5F7FB", "#0B1230"],
+  "dateSeparator": {
+    "textColor": ["#5B6785", "#A3B1D6"],
+    "bg": ["#EAF1FD", "#162556"],
+    "border": ["#D9E0EE", "#243163"],
+    "corners": [12, 12, 12, 12],
+    "padding": [2, 8, 2, 8],
+    "margins": [12, 4],
+    "fontWeight": 500
+  },
+  "layout_incoming": {
+    "type": "hbox",
+    "gap": 8,
+    "children": [
+      {
+        "type": "avatar"
+      },
+      {
+        "type": "vbox",
+        "gap": 2,
+        "stretch": 1,
+        "children": [
+          {
+            "type": "header",
+            "items": ["sender", "time"],
+            "senderColor": ["#0F1A3A", "#EAF0FF"]
+          },
+          {
+            "type": "body",
+            "corners": [12, 12, 12, 2],
+            "bg": ["gradient(#FFFFFF, #FFFFFF)", "gradient(#0F1838, #0F1838)"],
+            "border": ["#E3E8F1", "#1E2A57"],
+            "linkColor": ["#1E4FC2", "#7FA6F5"],
+            "padding": [10, 12, 10, 12],
+            "marginTop": 8,
+            "maxWidthPct": 84
+          }
+        ]
+      }
+    ]
+  },
+  "layout_incoming_next": {
+    "type": "vbox",
+    "gap": 0,
+    "children": [
+      {
+        "type": "body",
+        "corners": [2, 12, 12, 2],
+        "bg": ["gradient(#FFFFFF, #FFFFFF)", "gradient(#0F1838, #0F1838)"],
+        "border": ["#E3E8F1", "#1E2A57"],
+        "linkColor": ["#1E4FC2", "#7FA6F5"],
+        "padding": [10, 12, 10, 12],
+        "marginTop": 2,
+        "maxWidthPct": 84
+      }
+    ]
+  },
+  "layout_outgoing": {
+    "type": "vbox",
+    "gap": 2,
+    "children": [
+      {
+        "type": "header",
+        "items": ["time"],
+        "senderColor": ["#0F1A3A", "#EAF0FF"]
+      },
+      {
+        "type": "body",
+        "corners": [12, 12, 2, 12],
+        "bg": ["gradient(#1E4FC2, #1B3D9F)", "gradient(#2C6BD8, #1E4FC2)"],
+        "textColor": "#FFFFFF",
+        "linkColor": "#FFD59A",
+        "padding": [10, 12, 10, 12],
+        "marginTop": 8,
+        "maxWidthPct": 84
+      }
+    ]
+  },
+  "layout_outgoing_next": {
+    "type": "vbox",
+    "gap": 0,
+    "children": [
+      {
+        "type": "body",
+        "corners": [12, 2, 2, 12],
+        "bg": ["gradient(#1E4FC2, #1B3D9F)", "gradient(#2C6BD8, #1E4FC2)"],
+        "textColor": "#FFFFFF",
+        "linkColor": "#FFD59A",
+        "padding": [10, 12, 10, 12],
+        "marginTop": 2,
+        "maxWidthPct": 84
+      }
+    ]
+  },
+  "layout_system": {
+    "type": "vbox",
+    "gap": 0,
+    "children": [
+      {
+        "type": "body",
+        "textColor": ["#5B6785", "#A3B1D6"],
+        "linkColor": ["#1E4FC2", "#7FA6F5"],
+        "padding": [0, 4, 4, 4],
+        "marginTop": 0
+      }
+    ]
+  },
+  "layout_broadcast": {
+    "type": "vbox",
+    "gap": 0,
+    "children": [
+      {
+        "type": "body",
+        "corners": [8, 8, 8, 8],
+        "bg": ["#FFF5E8", "#2B1D0A"],
+        "border": ["#F6D3A0", "#6B4510"],
+        "linkColor": ["#1E4FC2", "#7FA6F5"],
+        "padding": [10, 12, 10, 12],
+        "marginTop": 8
+      }
+    ]
+  },
+  "layout_request": {
+    "type": "vbox",
+    "gap": 0,
+    "children": [
+      {
+        "type": "fileCard",
+        "corners": [12, 12, 12, 12],
+        "bg": ["gradient(#FFFFFF, #FFFFFF)", "gradient(#0F1838, #0F1838)"],
+        "border": ["#D9E0EE", "#243163"],
+        "linkColor": ["#1E4FC2", "#7FA6F5"],
+        "padding": [10, 12, 10, 12],
+        "marginTop": 8,
+        "maxWidthPct": 84
+      }
+    ]
+  }
+}

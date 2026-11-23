@@ -1,0 +1,156 @@
+{
+  "version": 1,
+  "displayName": "Modern Mesh Blue",
+  "_comment": "Corners are explicit per layout: outgoing nodes carry hand-mirrored values. Outgoing body text is #FFFFFF both modes. Ships 7 layout_*: incoming/outgoing split into series-start and in-series (_next) trees.",
+  "viewPadding": [0, 8, 8, 8],
+  "avatar": {
+    "size": 26,
+    "shape": "rounded"
+  },
+  "header": {
+    "senderWeight": 600,
+    "timeFormat": "HH:mm",
+    "outgoingYouLabel": true,
+    "senderColor": ["#64748B", "#7DD3FC"],
+    "timeColor": ["#64748B", "#7DD3FC"]
+  },
+  "text": ["#0F172A", "#E2E8F0"],
+  "page": ["#EFF6FF", "#0B1320"],
+  "dateSeparator": {
+    "textColor": ["#0369A1", "#7DD3FC"],
+    "bg": ["#E2F2FE", "#082C45"],
+    "border": ["#BAE6FD", "#075985"],
+    "corners": [12, 12, 12, 12],
+    "padding": [2, 10, 2, 10],
+    "margins": [12, 3],
+    "fontWeight": 600
+  },
+  "layout_incoming": {
+    "type": "hbox",
+    "gap": 8,
+    "children": [
+      {
+        "type": "avatar"
+      },
+      {
+        "type": "vbox",
+        "gap": 2,
+        "stretch": 1,
+        "children": [
+          {
+            "type": "header",
+            "items": ["sender", "time"],
+            "senderColor": ["#0F172A", "#E2E8F0"]
+          },
+          {
+            "type": "body",
+            "corners": [14, 14, 14, 3],
+            "bg": ["gradient(#FFFFFF, #F0FDF4)", "gradient(#162235, #111A29)"],
+            "border": ["#E2E8F0", "#1E3A5F"],
+            "linkColor": ["#0284C7", "#38BDF8"],
+            "padding": [10, 14, 10, 14],
+            "marginTop": 9,
+            "maxWidthPct": 80
+          }
+        ]
+      }
+    ]
+  },
+  "layout_incoming_next": {
+    "type": "vbox",
+    "gap": 0,
+    "children": [
+      {
+        "type": "body",
+        "corners": [3, 14, 14, 3],
+        "bg": ["gradient(#FFFFFF, #F0FDF4)", "gradient(#162235, #111A29)"],
+        "border": ["#E2E8F0", "#1E3A5F"],
+        "linkColor": ["#0284C7", "#38BDF8"],
+        "padding": [10, 14, 10, 14],
+        "marginTop": 3,
+        "maxWidthPct": 80
+      }
+    ]
+  },
+  "layout_outgoing": {
+    "type": "vbox",
+    "gap": 2,
+    "children": [
+      {
+        "type": "header",
+        "items": ["time"],
+        "senderColor": ["#0F172A", "#E2E8F0"]
+      },
+      {
+        "type": "body",
+        "corners": [14, 14, 3, 14],
+        "bg": ["gradient(#0284C7, #0369A1)", "gradient(#0EA5E9, #0284C7)"],
+        "textColor": "#FFFFFF",
+        "linkColor": "#FFE082",
+        "padding": [10, 14, 10, 14],
+        "marginTop": 9,
+        "maxWidthPct": 80
+      }
+    ]
+  },
+  "layout_outgoing_next": {
+    "type": "vbox",
+    "gap": 0,
+    "children": [
+      {
+        "type": "body",
+        "corners": [14, 3, 3, 14],
+        "bg": ["gradient(#0284C7, #0369A1)", "gradient(#0EA5E9, #0284C7)"],
+        "textColor": "#FFFFFF",
+        "linkColor": "#FFE082",
+        "padding": [10, 14, 10, 14],
+        "marginTop": 3,
+        "maxWidthPct": 80
+      }
+    ]
+  },
+  "layout_system": {
+    "type": "vbox",
+    "gap": 0,
+    "children": [
+      {
+        "type": "body",
+        "textColor": ["#64748B", "#7DD3FC"],
+        "linkColor": ["#0284C7", "#38BDF8"],
+        "padding": [0, 4, 4, 4],
+        "marginTop": 0
+      }
+    ]
+  },
+  "layout_broadcast": {
+    "type": "vbox",
+    "gap": 0,
+    "children": [
+      {
+        "type": "body",
+        "corners": [12, 12, 12, 12],
+        "bg": ["#EFF6FF", "#082F49"],
+        "border": "#0284C7",
+        "linkColor": ["#0284C7", "#38BDF8"],
+        "padding": [10, 14, 10, 14],
+        "marginTop": 9
+      }
+    ]
+  },
+  "layout_request": {
+    "type": "vbox",
+    "gap": 0,
+    "children": [
+      {
+        "type": "fileCard",
+        "bg": ["gradient(#FFFFFF, #F0FDF4)", "gradient(#162235, #111A29)"],
+        "border": ["#BAE6FD", "#1E3A5F"],
+        "corners": [12, 12, 12, 12],
+        "linkColor": ["#0284C7", "#38BDF8"],
+        "padding": [10, 14, 10, 14],
+        "marginTop": 9,
+        "maxWidthPct": 80
+      }
+    ]
+  }
+}
