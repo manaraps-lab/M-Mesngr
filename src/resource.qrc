@@ -1,0 +1,98 @@
+<RCC>
+    <qresource prefix="/icons">
+        <file alias="application">resources/icons/lmc.ico</file>
+    </qresource>
+    <qresource prefix="/icons/bubbles">
+        <file alias="away">resources/icons/awaybubble.ico</file>
+        <file alias="busy">resources/icons/busybubble.ico</file>
+        <file alias="nodisturb">resources/icons/nodisturbbubble.ico</file>
+        <file alias="offline">resources/icons/offlinebubble.ico</file>
+        <file alias="online">resources/icons/onlinebubble.ico</file>
+    </qresource>
+    <qresource prefix="/images">
+        <file alias="close">resources/images/close.png</file>
+        <file alias="history">resources/images/history.png</file>
+        <file alias="info">resources/images/info.png</file>
+        <file alias="messenger">resources/images/messenger.png</file>
+        <file alias="tools">resources/images/tools.png</file>
+        <file alias="file">resources/images/file.png</file>
+        <file alias="font">resources/images/font.png</file>
+        <file alias="fontcolor">resources/images/fontcolor.png</file>
+        <file alias="smiley">resources/images/smiley.png</file>
+        <file alias="save">resources/images/save.png</file>
+        <file alias="paint">resources/images/paint.png</file>
+        <file alias="logo">resources/images/logo.png</file>
+        <file alias="pixel">resources/images/pixel.png</file>
+        <file alias="critical">resources/images/critical.png</file>
+        <file alias="accept">resources/images/accept.png</file>
+        <file alias="stop">resources/images/stop.png</file>
+        <file alias="folder">resources/images/folder.png</file>
+        <file alias="broadcastmsg">resources/images/broadcastmsg.png</file>
+        <file alias="criticalmsg">resources/images/criticalmsg.png</file>
+        <file alias="filemsg">resources/images/filemsg.png</file>
+        <file alias="systemsettings">resources/images/systemsettings.png</file>
+        <file alias="alertsettings">resources/images/alertsettings.png</file>
+        <file alias="historysettings">resources/images/historysettings.png</file>
+        <file alias="messagesettings">resources/images/messagesettings.png</file>
+        <file alias="networksettings">resources/images/networksettings.png</file>
+        <file alias="transfersettings">resources/images/transfersettings.png</file>
+        <file alias="usersettings">resources/images/usersettings.png</file>
+        <file alias="transfer">resources/images/transfer.png</file>
+        <file alias="logosmall">resources/images/logosmall.png</file>
+        <file alias="web">resources/images/web.png</file>
+        <file alias="refresh">resources/images/refresh.png</file>
+        <file alias="question">resources/images/question.png</file>
+        <file alias="themesettings">resources/images/themesettings.png</file>
+        <file alias="chat">resources/images/chat.png</file>
+        <file alias="hotkeysettings">resources/images/hotkeysettings.png</file>
+        <file alias="chatroom">resources/images/chatroom.png</file>
+        <file alias="addcontact">resources/images/addcontact.png</file>
+        <file alias="newchatroom">resources/images/newchatroom.png</file>
+        <file alias="play">resources/images/play.png</file>
+        <file alias="sendfolder">resources/images/sendfolder.png</file>
+        <file alias="send">resources/images/send.png</file>
+    </qresource>
+    <qresource prefix="/images/status">
+        <file alias="away">resources/images/away.png</file>
+        <file alias="busy">resources/images/busy.png</file>
+        <file alias="nodisturb">resources/images/nodisturb.png</file>
+        <file alias="offline">resources/images/offline.png</file>
+        <file alias="online">resources/images/online.png</file>
+    </qresource>
+    <qresource prefix="/avatars">
+        <file alias="default">resources/avatars/default.png</file>
+        <file alias="0">resources/avatars/0.png</file>
+        <file alias="1">resources/avatars/1.png</file>
+        <file alias="2">resources/avatars/2.png</file>
+        <file alias="3">resources/avatars/3.png</file>
+        <file alias="4">resources/avatars/4.png</file>
+        <file alias="5">resources/avatars/5.png</file>
+        <file alias="6">resources/avatars/6.png</file>
+        <file alias="7">resources/avatars/7.png</file>
+        <file alias="8">resources/avatars/8.png</file>
+        <file alias="9">resources/avatars/9.png</file>
+        <file alias="10">resources/avatars/10.png</file>
+        <file alias="11">resources/avatars/11.png</file>
+        <file alias="12">resources/avatars/12.png</file>
+        <file alias="13">resources/avatars/13.png</file>
+        <file alias="14">resources/avatars/14.png</file>
+        <file alias="15">resources/avatars/15.png</file>
+        <file alias="16">resources/avatars/16.png</file>
+        <file alias="17">resources/avatars/17.png</file>
+        <file alias="18">resources/avatars/18.png</file>
+        <file alias="19">resources/avatars/19.png</file>
+    </qresource>
+    <qresource prefix="/text">
+        <file alias="license">resources/text/license.txt</file>
+        <file alias="thanks">resources/text/thanks.txt</file>
+    </qresource>
+    <qresource prefix="/lang">
+        <file alias="en_US.qm">resources/lang/en_US.qm</file>
+    </qresource>
+    <qresource prefix="/themes">
+        <file alias="ClassicSlate.json">resources/themes/ClassicSlate.json</file>
+        <file alias="Manara.json">resources/themes/Manara.json</file>
+        <file alias="MeshBlue.json">resources/themes/MeshBlue.json</file>
+        <file alias="NordicTerminal.json">resources/themes/NordicTerminal.json</file>
+    </qresource>
+</RCC>

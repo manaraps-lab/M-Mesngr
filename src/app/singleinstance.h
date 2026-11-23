@@ -1,0 +1,75 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (c) 2026 LAN Messenger.
+#pragma once
+
+#include <QObject>
+#include <QLockFile>
+#include <QString>
+
+class QLocalServer;
+
+// Single-instance guard on QLockFile + QLocalServer. The tryLock() loser is
+// the client, the winner must listen(). Wire format is a 1-byte opcode
+// ('R' = raise, 'T' = term) with a 1-byte ack ('A'); the "lmcsi-*"
+// namespace is disjoint from "qtsingleapp-*" by design: no
+// cross-version single-instance guarantee.
+class SingleInstance : public QObject {
+  Q_OBJECT
+public:
+  // ListenFailed releases the lock: nothing actually runs.
+  enum class Election {
+    Elected,
+    HeldByOther,
+    ListenFailed
+  };
+  // Pathology means the election budget ran out: warn loudly and continue
+  // degraded, without the guard.
+  enum class StartupOutcome {
+    FirstServer,
+    SecondDelivered,
+    Pathology
+  };
+
+  explicit SingleInstance(const QString& appId, QObject* parent = nullptr);
+  ~SingleInstance() override;
+
+  Election tryBecomeServer(bool warn = true);
+  // True if this instance currently holds the lock AND listens.
+  bool isServer() const;
+  // Peek: true iff the lock file is held by another instance. Never listens:
+  // safe to call from any branch, including the holder itself (self-hold
+  // reports false; the probe does a momentary tryLock/unlock on a separate
+  // QLockFile and never calls listen()). Used by /termwait and peek tests.
+  bool isLockedByOther();
+  // Connect/listen endpoint (test hook): bare socket name on host,
+  // absolute path in the flatpak sandbox.
+  QString endpoint() const;
+  // No election inside: call only from the HeldByOther branch.
+  // Worst case ~15 s on a wedged lock-holder.
+  bool tryDeliver(const QString& message, int timeout = 5000);
+  // Budget retries*sleepMs; false = pathology or a wedged holder.
+  bool ensureServer(int retries, int sleepMs);
+  // Probe once, then branch; heals the transient-holder race within
+  // retries*sleepMs.
+  StartupOutcome resolveStartup(const QString& remoteCommand, int retries, int sleepMs,
+                                int timeout = 5000);
+Q_SIGNALS:
+  void messageReceived(const QString& message);
+
+private:
+  bool listenWithRescue();
+  void receiveConnection();
+  static QString socketNameFor(const QString& appId);
+  QString serverPathFor(const QString& socketName) const;
+  QString lockFileFor(const QString& socketName) const;
+
+  QLocalServer* server_ = nullptr;
+  // Evaluated once per object: lock/socket paths must agree with each other.
+  const bool inFlatpak_;
+  QString socketName_;
+  // Connect/listen endpoint: bare name on host, absolute path in sandbox.
+  QString serverPath_;
+  // After socketName_: the lock path derives from it.
+  QLockFile lockFile_;
+  bool listening_ = false;
+};

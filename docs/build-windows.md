@@ -1,0 +1,77 @@
+---
+title: Building on Windows
+description: MSVC build, Qt deployment with windeployqt, and the NSIS installer.
+---
+
+Prerequisites first: [Build prerequisites](build-prerequisites.md) (OpenSSL layout, CMake,
+translations). OpenSSL should be built/installed first; using a folder at
+the same level as the `lmc` folder as the OpenSSL folder is recommended
+(see the [OpenSSL setup](build-prerequisites.md#compilinginstalling-openssl)).
+
+It is possible to compile using other build chains/IDEs, but the CI build
+uses CMake with the MSVC tool chain.
+
+## Build
+
+The build is driven by CMake; the binaries are written to the build
+directory. The `package-local` target stages the complete runtime bundle
+into the `LMC_RELEASE_DIR` directory (defaults to `<build-dir>/release`).
+The CI build stages it into `release` where the packaging scripts
+expect it. Run from Git Bash (comes with Git for Windows):
+
+```bash
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DLMC_RELEASE_DIR="$PWD/release"
+cmake --build build --config Release --target package-local --parallel
+```
+
+The application binary is `lmc.exe` (no separate DLL), so no renaming step is needed. The
+`package-local` target copies the OpenSSL runtime DLLs
+(`libcrypto*.dll`, `libssl*.dll`) from `openssl\bin` into the output
+folder.
+
+## Qt deployment
+
+To gather the Qt libraries and plugins into the output folder, run
+`windeployqt --release <output>\lmc.exe` afterwards, as done in the CI
+build. The Qt 6 TLS backend plugins (the `tls` folder) are needed for SSL
+support; copy them from your Qt installation's `plugins\tls` folder into
+the output `tls` folder if `windeployqt` skipped them (the CI build does
+this as a separate step). The SQLite driver (`sqldrivers\qsqlite.dll`,
+needed for history storage) is staged by `windeployqt` as well, because
+lmc links Qt6 Sql; the CI build asserts its presence and the installer
+check requires it. `windeployqt` also stages `vc_redist.x64.exe` next
+to the exe. It finds the redist via the toolchain environment, so run
+it from vcvars / Developer PowerShell — a plain Git Bash will not do
+(CI gets the same environment from setup-msvc-dev). Note the shell
+switch versus the build above; without the staged file `setup.ps1`
+fails its redist check, and the installer needs the redist to run on
+clean machines.
+
+## Installer
+
+To build the installer, run `setup.bat` in the `setup\win32` folder
+(a thin wrapper over `setup.ps1`, PowerShell 5.1+).
+NSIS must be installed first. Usage:
+
+```cmd
+setup.bat <ExeFolder> <ProductVersion>
+```
+
+Example:
+
+```cmd
+setup.bat release 1.3.21
+```
+
+From PowerShell directly (default policy blocks unsigned scripts):
+
+```powershell
+powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File setup.ps1 release 1.3.21
+```
+
+The script executes an NSIS script (`setup.nsi`) which packages the
+whole `ExeFolder` and generates the installer. `ProductVersion` is passed
+to `makensis` as a command line define; `InstallerVersion` is read from
+the `FILEVERSION` stamp of the built `lmc.exe` in `ExeFolder`. The installer generated will have the
+name `lmc-<version>-win64.exe` and it will be saved to the `setup`
+folder.

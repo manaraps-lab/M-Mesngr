@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.lanmessenger.lmc</id>
+  <name>LAN Messenger</name>
+  <summary>Send and receive instant messages over a local network</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+  <description>
+    <p>
+      LAN Messenger is an instant messaging application for communication
+      over a local network.
+    </p>
+  </description>
+  <launchable type="desktop-id">io.github.lanmessenger.lmc.desktop</launchable>
+  <url type="homepage">https://lanmessenger.github.io/</url>
+  <screenshots>
+    <screenshot type="default">
+      <image>https://lanmessenger.github.io/images/screenshots/linux-chat.png</image>
+      <caption>Chat window with a contact</caption>
+    </screenshot>
+    <screenshot>
+      <image>https://lanmessenger.github.io/images/screenshots/linux-main.png</image>
+      <caption>Main window with contact list</caption>
+    </screenshot>
+  </screenshots>
+  <content_rating type="oars-1.1">
+    <content_attribute id="social-chat">intense</content_attribute>
+  </content_rating>
+  <releases>
+    <release version="1.3.27" date="2026-11-21">
+      <description>
+        <p>Windows installer fix: install VC++ redist before app files</p>
+      </description>
+    </release>
+    <release version="1.3.25" date="2026-11-20">
+      <description>
+        <p>Persist incoming broadcast history, native UI refresh, notification sound deadlock fix and misc fixes</p>
+      </description>
+    </release>
+    <release version="1.3.23" date="2026-11-17">
+      <description>
+        <p>Help window links to live docs, updated translations and misc fixes</p>
+      </description>
+    </release>
+  </releases>
+  <developer id="io.github.lanmessenger">
+    <name>LAN Messenger</name>
+  </developer>
+  <categories>
+    <category>Network</category>
+    <category>InstantMessaging</category>
+  </categories>
+  <provides>
+    <binary>lmc</binary>
+  </provides>
+</component>

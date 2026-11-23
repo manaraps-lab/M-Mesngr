@@ -1,0 +1,226 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (c) 2010 - 2012 Qualia Digital Solutions.
+// Copyright (c) 2026 LAN Messenger.
+#include "apprunner.h"
+#include "application.h"
+#include "lmc.h"
+#include "core/stdlocation.h"
+#include "core/uidefinitions.h"
+#include "core/lmccategories.h"
+#include "core/lmclogging.h"
+#include <QFile>
+#include <QResource>
+#include <QMessageBox>
+#include <QIcon>
+#include <QSslSocket>
+#include <QDir>
+#include <QThread>
+#include <cstdio>
+
+//	Define a unique application id. This is a combination of two GUIDs
+const QString appId = "93fab548-2cf5-4a1e-8758-a416a5ec2120-6fc5009f-84e8-4489-a444-7f934bcf9166";
+
+int showSwitches(void) {
+  QString msg = "Usage:	lmc [switches]\n"
+                "	All switches are optional.\n"
+                "\n"
+                "/loopback - Allows loopback communication with local machine.\n"
+                "/nohistory - Clears chat history (no-op when the history store failed to open).\n"
+                "/nofilehistory - Clears file transfer history (same condition as /nohistory).\n"
+                "/noconfig - Resets preferences to default values.\n"
+                "/sync - Synchronizes application settings and their external dependencies.\n"
+                "/unsync - Removes all external application dependencies.\n"
+                "/term - Closes an instance which is already running.\n"
+                "/termwait - Closes it and waits for it to exit.\n"
+                "/inst - Returns a value indicating whether an instance is already running.\n"
+                "/quit - Closes once the command line parameters are processed.\n"
+                "/trace - Enables debug logging to logs/lmc_*.log (disabled by default).\n"
+                "/? - Display this help.\n"
+                "\n"
+                "Custom QSS: themes/custom.qss (next to the JSON chat themes)\n"
+                "is applied at startup when present; restart to apply.\n"
+                "\n"
+                "If an instance is already running, a second launch only brings its window\n"
+                "to the front (or closes it with /term, waits with /termwait);\n"
+                "other switches apply at startup only.\n"
+                "\n"
+                "Example:\n"
+                "Start in loopback mode with default settings: lmc /loopback /noconfig\n"
+                "\n"
+                "Some command line switches are mutually exclusive. If multiple switches\n"
+                "are specified, they will take precedence in the order given above.\n" IDA_COPYRIGHT
+                "\n";
+  QMessageBox::information(NULL, IDA_TITLE, msg, QMessageBox::Ok);
+  return 0;
+}
+
+static void initTrace(const QStringList& arguments) {
+  if(!arguments.contains("/trace", Qt::CaseInsensitive)) {
+    LmcLogging::disable();
+    return;
+  }
+  LmcLogging::enable(StdLocation::freeLogFile());
+}
+
+// The message area is owned by JSON themes.
+static void applyCustomQss(Application& application) {
+  constexpr qint64 kMaxCustomQssBytes = 256 * 1024;
+  const QString path = StdLocation::userThemeDir() + QStringLiteral("/custom.qss");
+  QFile file(path);
+  if(!file.exists())
+    return;
+  if(!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+    qCWarning(lmcApp(), "CustomQss: cannot read %s", qUtf8Printable(path));
+    return;
+  }
+  const QByteArray data = file.read(kMaxCustomQssBytes + 1);
+  if(data.size() > kMaxCustomQssBytes) {
+    qCWarning(lmcApp(), "CustomQss: too large (over %lld bytes): %s",
+              static_cast<long long>(kMaxCustomQssBytes), qUtf8Printable(path));
+    return;
+  }
+  if(data.isEmpty())
+    return;
+  application.setStyleSheet(QString::fromUtf8(data));
+  qCInfo(lmcApp(), "CustomQss: applied from %s", qUtf8Printable(path));
+}
+
+static bool waitForFirstInstanceExit(Application& application, int timeoutMs) {
+  const int stepMs = 250;
+  int waited = 0;
+  while(application.isLockedByOther()) {
+    if(waited >= timeoutMs)
+      return false;
+    QThread::msleep(stepMs);
+    waited += stepMs;
+  }
+  return true;
+}
+
+QString remoteCommandFor(const QStringList& arguments) {
+  if(arguments.contains(QStringLiteral("/termwait"), Qt::CaseInsensitive))
+    return QStringLiteral("term");
+  if(arguments.contains("/term", Qt::CaseInsensitive))
+    return QStringLiteral("term");
+  return QStringLiteral("raise");
+}
+
+bool wantsTermWait(const QStringList& arguments) {
+  return arguments.contains(QStringLiteral("/termwait"), Qt::CaseInsensitive);
+}
+
+int lmcRunApplication(int argc, char* argv[],
+                      const std::function<void(QCoreApplication&)>& preExecHook) {
+  Application application(appId, argc, argv);
+
+  // Org/app before the resource resolve (QStandardPaths fallback).
+  // applicationName/organization* stay machine ids (QSettings paths);
+  // what the user sees (notably the macOS app menu) is DisplayName.
+  QApplication::setApplicationName(IDA_PRODUCT);
+  QApplication::setApplicationDisplayName(IDA_TITLE);
+  QApplication::setOrganizationName(IDA_COMPANY);
+  QApplication::setOrganizationDomain(QStringLiteral(IDA_DOMAIN_HOST));
+  QApplication::setDesktopFileName(QStringLiteral(LMC_DESKTOP_ID));
+
+#ifdef Q_OS_MAC
+  // Bundled plugins only (PlugIns from macdeployqt); a bare bundle keeps
+  // the default (build Qt) paths. A partial PlugIns is not supported and
+  // is treated as absent.
+  QDir dir(QApplication::applicationDirPath());
+  dir.cdUp();
+  const QString plugInsPath = dir.absoluteFilePath(QStringLiteral("PlugIns"));
+  const QDir plugInsDir(plugInsPath);
+  if(plugInsDir.exists(QStringLiteral("platforms")) &&
+     plugInsDir.exists(QStringLiteral("tls")))
+    QApplication::setLibraryPaths(QStringList(plugInsPath));
+#endif
+  QResource::registerResource(StdLocation::resourceFile());
+
+  QApplication::setWindowIcon(QIcon(IDR_APPICON));
+
+  QString messageList;
+  QStringList arguments = QApplication::arguments();
+
+  for(int index = 0; index < arguments.count(); index++) {
+    if(arguments.at(index).compare("/?", Qt::CaseInsensitive) == 0)
+      return showSwitches();
+    else if(arguments.at(index).compare("/inst", Qt::CaseInsensitive) == 0)
+      // 1 iff the single-instance lock is held by another instance.
+      // Pathology never holds it. Explicit elect here: cold start becomes
+      // the server and reports 0.
+      return application.tryBecomeServer(true) == SingleInstance::Election::HeldByOther ? 1 : 0;
+    else
+      messageList += arguments.at(index) + "\n";
+  }
+
+  // Probe once, then branch: second delivers and exits, first serves,
+  // pathology degrades.
+  const QString remoteCommand = remoteCommandFor(arguments);
+  const SingleInstance::StartupOutcome outcome =
+    application.resolveStartup(remoteCommand, 10, 200);
+  if(outcome == SingleInstance::StartupOutcome::SecondDelivered) {
+    if(wantsTermWait(arguments) && !waitForFirstInstanceExit(application, 10000)) {
+      fprintf(stderr, "lmc: warning: previous instance still running after termwait\n");
+      return 1;
+    }
+    return 0;
+  }
+  if(outcome == SingleInstance::StartupOutcome::FirstServer && wantsTermWait(arguments))
+    return 0;
+  if(outcome == SingleInstance::StartupOutcome::Pathology && wantsTermWait(arguments)) {
+    fprintf(stderr, "lmc: error: single-instance server unavailable, cannot stop previous instance\n");
+    return 1;
+  }
+
+  initTrace(arguments);
+  applyCustomQss(application);
+  if(outcome == SingleInstance::StartupOutcome::Pathology) {
+    fprintf(stderr, "lmc: warning: single-instance server unavailable, continuing without it\n");
+    qCWarning(lmcApp(), "Startup: single-instance pathology, continuing degraded");
+  } else {
+    qCInfo(lmcApp(), "Startup: first instance, lock acquired");
+  }
+
+  application.loadTranslations(StdLocation::resLangDir());
+  application.loadTranslations(StdLocation::sysLangDir());
+  application.loadTranslations(StdLocation::userLangDir());
+
+  lmcCore core;
+  //	handle command line args if this is first instance
+  //	some args are handled when the application is initializing
+  core.init(messageList);
+  //	the remaining args are handled after initializing all the layers
+  if(!core.processStartupSwitches(messageList)) {
+    qCInfo(lmcApp(), "Startup: exiting before event loop (/quit)");
+    return 0;
+  }
+  if(!core.start()) {
+    qCInfo(lmcApp(), "Startup: core start failed, exiting");
+    return 1;
+  }
+
+#ifdef QT_NO_SSL
+  qCCritical(lmcApp(), "Startup: Qt compiled with QT_NO_SSL, prompting to quit");
+  if(QMessageBox::critical(nullptr, IDA_TITLE, "Qt is compiled with QT_NO_SSL. Some functions will not work correctly. Quit application?", QMessageBox::Yes | QMessageBox::No) == QMessageBox::Yes)
+    return 2;
+#else
+  if(!QSslSocket::supportsSsl()) {
+    qCCritical(lmcApp(), "Startup: SSL backend missing, prompting to quit");
+    if(QMessageBox::critical(nullptr, IDA_TITLE, "Messenger does not find ssl at startup. Probably missing openssl dll. Some functions will not work correctly. Quit application?", QMessageBox::Yes | QMessageBox::No) == QMessageBox::Yes)
+      return 3;
+  }
+#endif
+
+  // Test hook: the test binary starts its agent server here.
+  if(preExecHook)
+    preExecHook(application);
+
+  QObject::connect(&application, &Application::messageReceived, &core, &lmcCore::receiveRemoteMessage);
+  QObject::connect(&application, &QCoreApplication::aboutToQuit, &core, &lmcCore::aboutToExit);
+
+  qCInfo(lmcApp(), "Startup: entering event loop");
+  int result = application.exec();
+  qCInfo(lmcApp(), "Shutdown: event loop exited with code %d", result);
+
+  return result;
+}
