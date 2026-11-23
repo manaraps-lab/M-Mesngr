@@ -1,0 +1,149 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (c) 2026 LAN Messenger.
+#pragma once
+
+// In-process GUI adapter core: search + fire-and-post executors.
+// Pure Qt Widgets API only — deliberately no lmc headers, so the core
+// links into the lan-messenger-test binary without ODR/duplication
+// hazards.
+//
+// All entry points must run in the application's GUI thread (the
+// QTcpServer lives there). Handlers may spin a bounded local QEventLoop
+// while waiting for a window; see PROTOCOL.md ("busy" guard lives in
+// the server layer).
+
+#include <QAction>
+#include <QJsonArray>
+#include <QJsonObject>
+#include <QString>
+#include <QWidget>
+
+namespace lmc_agent {
+
+// Parse "name=X type=Y visible=true" into a criteria map.
+// Bare string without '=' means {name: <string>}.
+QJsonObject parseLocator(const QString& locator);
+
+// First matching widget, or nullptr. Covers topLevelWidgets() +
+// findChildren<QWidget*>() (QAction matches are reported via
+// matchAction(), widgets only here).
+::QWidget* findWidget(const QJsonObject& criteria);
+
+// First matching QAction (menus/toolbars), or nullptr. qtexpert cannot
+// see these at all; this is the parity+ gap.
+::QAction* findAction(const QJsonObject& criteria);
+
+// Describe one widget (shallow: no children).
+QJsonObject describeWidget(::QWidget* widget);
+
+// Full tree for dump_tree: top-level widgets, recursive children and
+// actions as pseudo-nodes.
+QJsonArray dumpTree();
+
+// All top-level windows, flat.
+QJsonArray listWindows();
+
+// Fire-and-post click: QMouseEvent press+release posted to the widget
+// (or async trigger() for a QAction). Returns immediately.
+bool postClick(const QJsonObject& criteria, QString* error);
+
+// Fire-and-post hover: QMouseEvent MouseMove posted to the widget center
+// (a QTableWidget without a cell hovers its viewport center, where the
+// item-view mouse logic lives), or to a QTableWidget cell center
+// (viewport coords) when row/column >= 0.
+// Never blocks. Fills hovered with identity plus the hovered point/cell.
+bool postHover(const QJsonObject& criteria, int row, int column,
+               QJsonObject* hovered, QString* error);
+
+// Keyboard focus for screenshot states: QWidget::setFocus() on the widget
+// matching the locator (e.g. the EmojiPicker grid before an arrow-key
+// walk, so the current cell paints its Selected/HasFocus Highlight).
+// Synchronous, never blocks. Fails when the widget does not report
+// hasFocus() afterwards, so callers notice a raced popup instead of
+// screenshotting an unfocused grid.
+bool setFocus(const QJsonObject& criteria, QJsonObject* focused,
+              QString* error);
+
+// Key/modifier name tables for send_key. Key names: Return, Enter, Tab,
+// Backtab, Escape (Esc), Space, Backspace, Delete, Home, End, Left, Right,
+// Up, Down (case-insensitive). Modifier names: ctrl/control, shift, alt,
+// meta (case-insensitive, unknown names ignored).
+bool keyFromName(const QString& name, int* key, QString* error);
+Qt::KeyboardModifiers modifiersFromNames(const QJsonArray& names);
+
+// Fire-and-post key press+release to a widget, or to the focus widget
+// (else the active window) when target is null. Key names: Return, Enter,
+// Tab, Backtab, Escape, Space, Backspace, Delete, Home, End, Left, Right,
+// Up, Down (case-insensitive). Never blocks.
+bool postKey(::QWidget* target, const QString& keyName,
+             Qt::KeyboardModifiers mods, QString* error);
+
+// Set editable text (QTextEdit/QPlainTextEdit/QLineEdit). With send=true
+// a Return press is posted right after, so the widget's own Enter
+// handling runs (e.g. ChatWindow::eventFilter -> sendMessage, honoring
+// the SendKeyMod setting). Fire-and-post: returns immediately.
+bool typeText(const QJsonObject& criteria, const QString& text, bool send,
+              QString* error);
+
+// Fire-and-post QAction trigger: finds a menu/toolbar action only
+// (never a widget), queues trigger() via singleShot(0) so the reply
+// goes out before any exec() modal starts its nested loop. Returns
+// the action text (mnemonic '&' stripped). Same thread rule as postClick.
+bool triggerAction(const QJsonObject& criteria, QString* triggeredText,
+                   QString* error);
+
+// Close the top-level window matching the locator: QWidget::close() via
+// singleShot(0). Deterministic counterpart of Escape: every lmc window
+// that rejects on Escape installs the filter on its children and the
+// handler is just close() (chatwindow.cpp, historywindow.cpp,
+// helpwindow.cpp, transferwindow.cpp), so this runs the same close path
+// without depending on the focus widget. Modeless reuse windows only
+// hide, WA_DeleteOnClose windows are deleted. The result carries a post
+// snapshot (visible/isWindow/ptr): the close itself is async, so a later
+// wait_for_gone verdict is correlated to this exact object via ptr.
+bool closeWindow(const QJsonObject& criteria, QJsonObject* closed,
+                 QString* error);
+
+// Deterministic window placement for E2E screenshots: setGeometry +
+// raise + activateWindow on the top-level window matching the locator
+// (a child locator resolves to QWidget::window()), synchronous in the
+// GUI thread (no nested loop, no WM needed: bare Xvfb is enough).
+// Returns the applied geometry (x, y, width, height) plus identity.
+bool setGeometry(const QJsonObject& criteria, int x, int y, int width,
+                 int height, QJsonObject* placed, QString* error);
+
+// Synthetic file drop: build a QMimeData with file:// urls from paths
+// and deliver the real OS sequence DragEnter -> DragMove -> Drop
+// synchronously (QApplication::sendEvent) to the target, so the widget's
+// real drag path runs (ChatWindow eventFilter -> filterInputFileDrag ->
+// handleFileDrop, or the window dragEnter/dragMove/dropEvent for
+// target=widget on the ChatWindow itself). Synchronous: the QMimeData
+// lives on the stack, no postEvent lifetime hazard, and the reply
+// carries the Drop's isAccepted() right away (existence/caps checks stay
+// app-side). The full sequence matters: Qt only delivers a Drop to a
+// target that accepted the DragEnter, a lone synthetic Drop never
+// reaches widget event filters. Never blocks, no nested loop.
+// target: "viewport" (default: QAbstractScrollArea resolves to its
+// viewport, where QTextEdit drag events land) or "widget" (the matched
+// widget itself, e.g. the ChatWindow background).
+bool postDrop(const QJsonObject& criteria, const QStringList& paths,
+              const QString& targetMode, QJsonObject* dropped,
+              QString* error);
+
+// Blocking wait helpers (bounded local event loop, GUI thread).
+// wait_for_gone reports the stuck object on timeout (class/title/visible
+// plus sameWindow vs the object seen at entry), so a flaky close can be
+// told apart from a recreated window.
+bool waitForObject(const QJsonObject& criteria, double timeoutSecs,
+                   QJsonObject* found, QString* error);
+bool waitForGone(const QJsonObject& criteria, double timeoutSecs,
+                 QString* error);
+
+// Domain: resolve peer by userId or display name in the main-window
+// contact tree, fire the same tvUserList_itemActivated -> chatStarting
+// -> startChat path as keyboard Return, wait for a visible ChatWindow.
+// Returns the chat window title. Idempotent: shows the existing window.
+bool openChat(const QString& peer, double timeoutSecs, QString* title,
+              QString* error);
+
+} // namespace lmc_agent

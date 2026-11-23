@@ -1,0 +1,535 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (c) 2026 LAN Messenger.
+#include "agent_server.h"
+
+#include <QApplication>
+#include <QCoreApplication>
+#include <QHostAddress>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QLineEdit>
+#include <QPixmap>
+#include <QPlainTextEdit>
+#include <QPointer>
+#include <QScreen>
+#include <QTcpSocket>
+#include <QTextEdit>
+#include <QTimer>
+#include <QVariant>
+#include <QWindow>
+#include <cmath>
+
+#include "agent_core.h"
+
+namespace lmc_agent {
+namespace {
+
+constexpr double kDefaultTimeoutSecs = 10.0;
+
+double timeoutParam(const QJsonObject& params) {
+  const QJsonValue value = params.value(QStringLiteral("timeout"));
+  if(value.isDouble())
+    return value.toDouble();
+  if(value.isString()) {
+    QString text = value.toString().trimmed().toLower();
+    if(text.endsWith(QLatin1Char('s')))
+      text.chop(1);
+    bool ok = false;
+    const double secs = text.toDouble(&ok);
+    if(ok && secs > 0.0)
+      return secs;
+  }
+  return kDefaultTimeoutSecs;
+}
+
+// One cell index for hover: accepts numbers and numeric strings
+// (QJsonValue::toInt(-1) returns the default for strings, so {"row":"0"}
+// would silently become -1; timeoutParam already parses strings the same
+// way). Rejects bools, nulls, negatives and fractional doubles.
+bool cellIndexValue(const QJsonValue& value, int* out) {
+  if(value.isBool() || value.isNull() || value.isUndefined())
+    return false;
+  if(value.isDouble()) {
+    const double d = value.toDouble();
+    if(d < 0.0 || d != std::trunc(d))
+      return false;
+    *out = int(d);
+    return true;
+  }
+  bool ok = false;
+  const int parsed = value.toVariant().toInt(&ok);
+  if(!ok || parsed < 0)
+    return false;
+  *out = parsed;
+  return true;
+}
+
+// One geometry int for set_geometry: presence checked first (toInt(-1)
+// conflates "missing" with an explicit negative), then the range.
+// `alias` is the compact form (`w`/`h`); empty when there is none.
+bool geometryParam(const QJsonObject& params, const QString& name,
+                   const QString& alias, int minimum, int* out,
+                   QString* error) {
+  int value = -1;
+  if(params.contains(name))
+    value = params.value(name).toInt(-1);
+  else if(!alias.isEmpty() && params.contains(alias))
+    value = params.value(alias).toInt(-1);
+  else {
+    if(error)
+      *error = QStringLiteral("missing %1").arg(name);
+    return false;
+  }
+  if(value < minimum) {
+    if(error)
+      *error = QStringLiteral("%1 must be >= %2").arg(name).arg(minimum);
+    return false;
+  }
+  *out = value;
+  return true;
+}
+
+QJsonObject errorReply(const QJsonValue& id, const QString& error) {
+  QJsonObject reply;
+  reply[QStringLiteral("id")] = id;
+  reply[QStringLiteral("ok")] = false;
+  reply[QStringLiteral("error")] = error;
+  return reply;
+}
+
+QJsonObject okReply(const QJsonValue& id, const QJsonObject& result) {
+  QJsonObject reply;
+  reply[QStringLiteral("id")] = id;
+  reply[QStringLiteral("ok")] = true;
+  reply[QStringLiteral("result")] = result;
+  return reply;
+}
+
+// Per-connection state: buffers one NDJSON stream, dispatches complete
+// lines in the GUI thread (all socket signals already live there).
+class Connection : public QObject {
+  Q_OBJECT
+
+public:
+  Connection(QTcpSocket* socket, AgentServer* server)
+      : QObject(server), socket_(socket), server_(server) {
+    socket_->setParent(this);
+    connect(socket_, &QTcpSocket::readyRead, this, &Connection::onReadyRead);
+    connect(socket_, &QTcpSocket::disconnected, this, &Connection::deleteLater);
+  }
+
+private slots:
+  void onReadyRead() {
+    buffer_ += socket_->readAll();
+    int newline = -1;
+    while((newline = buffer_.indexOf('\n')) >= 0) {
+      const QByteArray line = buffer_.left(newline).trimmed();
+      buffer_.remove(0, newline + 1);
+      if(line.isEmpty())
+        continue;
+      handleLine(line);
+    }
+  }
+
+private:
+  void send(const QJsonObject& reply) {
+    socket_->write(QJsonDocument(reply).toJson(QJsonDocument::Compact) + "\n");
+  }
+
+  void handleLine(const QByteArray& line) {
+    QJsonParseError parseError;
+    const QJsonDocument doc = QJsonDocument::fromJson(line, &parseError);
+    if(parseError.error != QJsonParseError::NoError || !doc.isObject()) {
+      send(errorReply(0, QStringLiteral("invalid json")));
+      return;
+    }
+    const QJsonObject request = doc.object();
+    const QJsonValue id = request.value(QStringLiteral("id"));
+    const QString cmd = request.value(QStringLiteral("cmd")).toString();
+    const QJsonObject params = request.value(QStringLiteral("params")).toObject();
+    if(cmd.isEmpty()) {
+      send(errorReply(id, QStringLiteral("missing cmd")));
+      return;
+    }
+    if(server_->isBusy()) {
+      send(errorReply(id, QStringLiteral("busy")));
+      return;
+    }
+    server_->setBusy(true);
+    const QJsonObject reply = dispatch(id, cmd, params);
+    server_->setBusy(false);
+    send(reply);
+    if(cmd == QStringLiteral("close_app")) {
+      // Quit after the reply flushes: async so exec() modals (if any)
+      // cannot swallow the response.
+      // Prod parity (lmcCore::exitApp): a naked quit with visible top-levels
+      // stalls under a WM, so close the visible ones first. Hidden popups
+      // stay out: closing a hidden QMenu segfaults in QWidgetPrivate::close.
+      QList<QPointer<QWidget>> guards;
+      for(QWidget* top : QApplication::topLevelWidgets())
+        if(top->isVisible())
+          guards.append(QPointer<QWidget>(top));
+      for(const QPointer<QWidget>& guard : guards)
+        if(!guard.isNull())
+          guard->close();
+      QTimer::singleShot(0, qApp, &QCoreApplication::quit);
+      // Watchdog: a stalled loop becomes a loud log, not silence.
+      QTimer::singleShot(5000, qApp, [] {
+        qWarning("lmc-agent: close_app quit stalled, event loop still alive 5s after quit");
+        for(QWidget* top : QApplication::topLevelWidgets()) {
+          qWarning("lmc-agent: stalled window: %s visible=%d",
+                   top->metaObject()->className(), top->isVisible());
+          if(top->isVisible())
+            top->close();
+        }
+        qApp->quit();
+      });
+    }
+  }
+
+  QJsonObject dispatch(const QJsonValue& id, const QString& cmd,
+                       const QJsonObject& params) {
+    const double timeout = timeoutParam(params);
+    if(cmd == QStringLiteral("wait_for_object")) {
+      QJsonObject found;
+      QString error;
+      if(!waitForObject(parseLocator(params.value(QStringLiteral("locator")).toString()),
+                        timeout, &found, &error))
+        return errorReply(id, error);
+      return okReply(id, found);
+    }
+    if(cmd == QStringLiteral("wait_for_gone")) {
+      QString error;
+      if(!waitForGone(parseLocator(params.value(QStringLiteral("locator")).toString()),
+                      timeout, &error))
+        return errorReply(id, error);
+      QJsonObject result;
+      result[QStringLiteral("gone")] = true;
+      return okReply(id, result);
+    }
+    if(cmd == QStringLiteral("object_exists")) {
+      const QJsonObject criteria =
+        parseLocator(params.value(QStringLiteral("locator")).toString());
+      QJsonObject result;
+      result[QStringLiteral("exists")] =
+        (findWidget(criteria) != nullptr) || (findAction(criteria) != nullptr);
+      return okReply(id, result);
+    }
+    if(cmd == QStringLiteral("get_property")) {
+      QWidget* widget =
+        findWidget(parseLocator(params.value(QStringLiteral("locator")).toString()));
+      if(!widget)
+        return errorReply(id, QStringLiteral("no widget matches locator"));
+      const QString name = params.value(QStringLiteral("property")).toString();
+      QJsonObject result;
+      // qtexpert parity: "text"/"plainText" on an editable widget means its
+      // textual content — Qt exposes no such dynamic property on a
+      // QTextEdit, only QLineEdit has "text".
+      if(name == QStringLiteral("text") ||
+         name == QStringLiteral("plainText")) {
+        if(widget->inherits("ChatMessageView")) {
+          //  Native chat view (stage 1): the app provides the canonical
+          //  plainText (model->data() joined), Q_PROPERTY — no lmc header link.
+          const QVariant value = widget->property("plainText");
+          if(!value.isValid())
+            return errorReply(id, QStringLiteral("ChatMessageView has no plainText"));
+          result[QStringLiteral("value")] = value.toString();
+        } else if(auto* textEdit = qobject_cast<QTextEdit*>(widget))
+          result[QStringLiteral("value")] = textEdit->toPlainText();
+        else if(auto* edit = qobject_cast<QPlainTextEdit*>(widget))
+          result[QStringLiteral("value")] = edit->toPlainText();
+        else if(auto* lineEdit = qobject_cast<QLineEdit*>(widget))
+          result[QStringLiteral("value")] = lineEdit->text();
+        else
+          return errorReply(id,
+                            QStringLiteral("%1 needs a text widget").arg(name));
+      } else {
+        const QVariant value = widget->property(name.toLatin1().constData());
+        if(!value.isValid())
+          return errorReply(id, QStringLiteral("unknown property: %1").arg(name));
+        result[QStringLiteral("value")] = QJsonValue::fromVariant(value);
+      }
+      return okReply(id, result);
+    }
+    if(cmd == QStringLiteral("set_property")) {
+      QWidget* widget =
+        findWidget(parseLocator(params.value(QStringLiteral("locator")).toString()));
+      if(!widget)
+        return errorReply(id, QStringLiteral("no widget matches locator"));
+      const QString name = params.value(QStringLiteral("property")).toString();
+      const QJsonValue value = params.value(QStringLiteral("value"));
+      const bool set = widget->setProperty(name.toLatin1().constData(),
+                                           value.toVariant());
+      if(!set)
+        return errorReply(id, QStringLiteral("cannot set property: %1").arg(name));
+      QJsonObject result;
+      result[QStringLiteral("set")] = true;
+      return okReply(id, result);
+    }
+    if(cmd == QStringLiteral("click")) {
+      QString error;
+      if(!postClick(parseLocator(params.value(QStringLiteral("locator")).toString()),
+                    &error))
+        return errorReply(id, error);
+      QJsonObject result;
+      result[QStringLiteral("clicked")] = true;
+      return okReply(id, result);
+    }
+    if(cmd == QStringLiteral("hover")) {
+      const QString locator = params.value(QStringLiteral("locator")).toString();
+      if(locator.isEmpty())
+        return errorReply(id, QStringLiteral("hover: missing locator"));
+      const bool hasRow = params.contains(QStringLiteral("row"));
+      const bool hasColumn = params.contains(QStringLiteral("column")) ||
+                             params.contains(QStringLiteral("col"));
+      if(hasRow != hasColumn)
+        return errorReply(id, QStringLiteral("hover: row and column go together"));
+      int row = -1, column = -1;
+      if(hasRow) {
+        if(!cellIndexValue(params.value(QStringLiteral("row")), &row))
+          return errorReply(id, QStringLiteral("hover: row and column must be >= 0"));
+        const bool hasColumnKey = params.contains(QStringLiteral("column"));
+        const bool hasColAlias = params.contains(QStringLiteral("col"));
+        int fromColumn = -1, fromCol = -1;
+        const bool okColumn =
+          !hasColumnKey || cellIndexValue(params.value(QStringLiteral("column")), &fromColumn);
+        const bool okCol =
+          !hasColAlias || cellIndexValue(params.value(QStringLiteral("col")), &fromCol);
+        if(!okColumn || !okCol)
+          return errorReply(id, QStringLiteral("hover: row and column must be >= 0"));
+        if(hasColumnKey && hasColAlias && fromColumn != fromCol)
+          return errorReply(
+            id, QStringLiteral("hover: column and col differ, must match"));
+        column = hasColumnKey ? fromColumn : fromCol;
+      }
+      QString error;
+      QJsonObject hovered;
+      if(!postHover(parseLocator(locator), row, column, &hovered, &error))
+        return errorReply(id, error);
+      hovered[QStringLiteral("hovered")] = true;
+      return okReply(id, hovered);
+    }
+    if(cmd == QStringLiteral("focus")) {
+      const QString locator = params.value(QStringLiteral("locator")).toString();
+      if(locator.isEmpty())
+        return errorReply(id, QStringLiteral("focus: missing locator"));
+      QString error;
+      QJsonObject focused;
+      if(!setFocus(parseLocator(locator), &focused, &error))
+        return errorReply(id, error);
+      focused[QStringLiteral("focused")] = true;
+      return okReply(id, focused);
+    }
+    if(cmd == QStringLiteral("trigger_action")) {
+      QString triggered;
+      QString error;
+      if(!triggerAction(parseLocator(params.value(QStringLiteral("locator")).toString()),
+                        &triggered, &error))
+        return errorReply(id, error);
+      QJsonObject result;
+      result[QStringLiteral("triggered")] = triggered;
+      return okReply(id, result);
+    }
+    if(cmd == QStringLiteral("type_text")) {
+      const QString text = params.value(QStringLiteral("text")).toString();
+      const QJsonValue sendValue = params.value(QStringLiteral("send"));
+      const bool send = sendValue.isBool()
+                          ? sendValue.toBool()
+                          : sendValue.toString().compare(
+                              QStringLiteral("true"),
+                              Qt::CaseInsensitive) == 0;
+      QString error;
+      if(!typeText(parseLocator(params.value(QStringLiteral("locator")).toString()),
+                   text, send, &error))
+        return errorReply(id, error);
+      QJsonObject result;
+      result[QStringLiteral("typed")] = true;
+      return okReply(id, result);
+    }
+    if(cmd == QStringLiteral("send_key")) {
+      QWidget* widget = nullptr;
+      const QString locator = params.value(QStringLiteral("locator")).toString();
+      if(!locator.isEmpty()) {
+        widget = findWidget(parseLocator(locator));
+        if(!widget)
+          return errorReply(id, QStringLiteral("no widget matches locator"));
+      }
+      const QString key = params.value(QStringLiteral("key")).toString();
+      if(key.isEmpty())
+        return errorReply(id, QStringLiteral("missing key"));
+      QString error;
+      if(!postKey(widget, key,
+                  modifiersFromNames(params.value(QStringLiteral("modifiers"))
+                                       .toArray()),
+                  &error))
+        return errorReply(id, error);
+      QJsonObject result;
+      result[QStringLiteral("sent")] = key;
+      return okReply(id, result);
+    }
+    if(cmd == QStringLiteral("drop_urls")) {
+      const QString locator = params.value(QStringLiteral("locator")).toString();
+      if(locator.isEmpty())
+        return errorReply(id, QStringLiteral("drop_urls: missing locator"));
+      const QJsonValue pathsValue = params.value(QStringLiteral("paths"));
+      if(!pathsValue.isArray() || pathsValue.toArray().isEmpty())
+        return errorReply(id, QStringLiteral("drop_urls: missing paths"));
+      QStringList paths;
+      for(const QJsonValue& value : pathsValue.toArray()) {
+        if(!value.isString() || value.toString().isEmpty())
+          return errorReply(id, QStringLiteral("drop_urls: empty path"));
+        paths.append(value.toString());
+      }
+      const QString target = params.value(QStringLiteral("target")).toString();
+      QString error;
+      QJsonObject dropped;
+      if(!postDrop(parseLocator(locator), paths, target, &dropped, &error))
+        return errorReply(id, error);
+      dropped[QStringLiteral("dropped")] = true;
+      return okReply(id, dropped);
+    }
+    if(cmd == QStringLiteral("close_window")) {
+      QJsonObject closed;
+      QString error;
+      if(!closeWindow(parseLocator(params.value(QStringLiteral("locator")).toString()),
+                      &closed, &error))
+        return errorReply(id, error);
+      return okReply(id, closed);
+    }
+    if(cmd == QStringLiteral("set_geometry")) {
+      const QString locator = params.value(QStringLiteral("locator")).toString();
+      if(locator.isEmpty())
+        return errorReply(id, QStringLiteral("set_geometry: missing locator"));
+      int x = 0, y = 0, width = 0, height = 0;
+      QString error;
+      if(!geometryParam(params, QStringLiteral("x"), QString(), 0, &x, &error) ||
+         !geometryParam(params, QStringLiteral("y"), QString(), 0, &y, &error) ||
+         !geometryParam(params, QStringLiteral("width"), QStringLiteral("w"),
+                        1, &width, &error) ||
+         !geometryParam(params, QStringLiteral("height"),
+                        QStringLiteral("h"), 1, &height, &error))
+        return errorReply(id, QStringLiteral("set_geometry: %1").arg(error));
+      QJsonObject placed;
+      if(!setGeometry(parseLocator(locator), x, y, width, height, &placed,
+                      &error))
+        return errorReply(id, error);
+      return okReply(id, placed);
+    }
+    if(cmd == QStringLiteral("dump_tree")) {
+      QJsonObject result;
+      result[QStringLiteral("tree")] = dumpTree();
+      return okReply(id, result);
+    }
+    if(cmd == QStringLiteral("get_log")) {
+      QJsonObject result;
+      result[QStringLiteral("path")] = server_->appLogPath();
+      return okReply(id, result);
+    }
+    if(cmd == QStringLiteral("list_windows")) {
+      QJsonObject result;
+      result[QStringLiteral("windows")] = listWindows();
+      return okReply(id, result);
+    }
+    if(cmd == QStringLiteral("grab_screenshot")) {
+      QWidget* widget = nullptr;
+      const QString locator = params.value(QStringLiteral("locator")).toString();
+      if(!locator.isEmpty()) {
+        widget = findWidget(parseLocator(locator));
+        if(!widget)
+          return errorReply(id, QStringLiteral("no widget matches locator"));
+      } else {
+        const QWidgetList tops = QApplication::topLevelWidgets();
+        for(QWidget* top : tops) {
+          if(top->objectName() == QStringLiteral("MainWindow")) {
+            widget = top;
+            break;
+          }
+        }
+        if(!widget && !tops.isEmpty())
+          widget = tops.first();
+      }
+      const QString file = params.value(QStringLiteral("file")).toString();
+      if(file.isEmpty())
+        return errorReply(id, QStringLiteral("missing file"));
+      QPixmap shot;
+      QJsonObject result;
+      if(params.value(QStringLiteral("frame")).toBool(false)) {
+        // Full window incl. native decorations (title bar + borders):
+        // real screen pixels of the frame rect. No WM (bare Xvfb) =>
+        // frame == client, same as QWidget::grab. Logical coords are
+        // exact at ratio 1 (Windows CI default); HiDPI legs verify by
+        // the PNG dims in artifacts.
+        QWidget* window = widget->isWindow() ? widget : widget->window();
+        const QRect frameRect = window->frameGeometry();
+        QScreen* screen = window->windowHandle() ? window->windowHandle()->screen() : nullptr;
+        if(!screen)
+          screen = QApplication::primaryScreen();
+        if(!screen)
+          return errorReply(id, QStringLiteral("no screen for frame grab"));
+        shot = screen->grabWindow(0, frameRect.x(), frameRect.y(),
+                                  frameRect.width(), frameRect.height());
+        result[QStringLiteral("x")] = frameRect.x();
+        result[QStringLiteral("y")] = frameRect.y();
+        result[QStringLiteral("width")] = frameRect.width();
+        result[QStringLiteral("height")] = frameRect.height();
+      } else {
+        shot = widget->grab();
+      }
+      if(shot.isNull() || !shot.save(file)) {
+        return errorReply(id, QStringLiteral("screenshot failed: %1").arg(file));
+      }
+      result[QStringLiteral("file")] = file;
+      return okReply(id, result);
+    }
+    if(cmd == QStringLiteral("open_chat")) {
+      QString title;
+      QString error;
+      if(!openChat(params.value(QStringLiteral("peer")).toString(), timeout,
+                   &title, &error))
+        return errorReply(id, error);
+      QJsonObject result;
+      result[QStringLiteral("title")] = title;
+      return okReply(id, result);
+    }
+    if(cmd == QStringLiteral("close_app")) {
+      QJsonObject result;
+      result[QStringLiteral("closing")] = true;
+      return okReply(id, result);
+    }
+    if(cmd == QStringLiteral("open_window") || cmd == QStringLiteral("close_dialog") ||
+       cmd == QStringLiteral("type_path")) {
+      return errorReply(id, QStringLiteral("%1: not implemented (phase 2)").arg(cmd));
+    }
+    return errorReply(id, QStringLiteral("unknown cmd: %1").arg(cmd));
+  }
+
+  QTcpSocket* socket_;
+  AgentServer* server_;
+  QByteArray buffer_;
+};
+
+} // namespace
+
+AgentServer::AgentServer(quint16 port, const QString& appLogPath,
+                         QObject* parent)
+    : QTcpServer(parent), appLogPath_(appLogPath) {
+  if(!listen(QHostAddress::LocalHost, port)) {
+    qWarning("lmc-agent: cannot listen on 127.0.0.1:%d: %s", port,
+             qPrintable(errorString()));
+    return;
+  }
+  connect(this, &QTcpServer::newConnection, this,
+          &AgentServer::onNewConnection);
+}
+
+void AgentServer::onNewConnection() {
+  while(hasPendingConnections()) {
+    QTcpSocket* socket = nextPendingConnection();
+    new Connection(socket, this);
+  }
+}
+
+} // namespace lmc_agent
+
+#include "agent_server.moc"

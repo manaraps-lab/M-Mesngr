@@ -1,0 +1,123 @@
+# lmc-agent wire protocol (v1)
+
+In-process GUI adapter for the LAN Messenger E2E suite. Replaces
+`robotframework-qtexpert` + `xdotool` (see `todo/lmc-test-adapter.md`).
+
+Transport: `QTcpSocket`/`QTcpServer` on `127.0.0.1`, port from env
+`LMC_AGENT_PORT` (default `9999`). The server lives in the application's
+GUI thread: every command runs there, so no cross-thread widget access.
+
+Framing: newline-delimited JSON, UTF-8. One line = one message, `\n`
+terminated. Same envelope style as `tools/lmm/PROTOCOL.md`.
+
+## Requests
+
+```json
+{"id": 1, "cmd": "open_chat", "params": {"peer": "MockBob"}}
+```
+
+- `id`: client-chosen (number or string), echoed back.
+- `cmd`: one of the commands below.
+- `params`: object, may be omitted.
+
+## Responses
+
+```json
+{"id": 1, "ok": true, "result": {"title": "MockBob - Conversation"}}
+{"id": 2, "ok": false, "error": "peer not found: Nobody"}
+```
+
+Malformed lines get `{"id": 0, "ok": false, "error": "invalid json"}`.
+Unknown commands get `{"ok": false, "error": "unknown cmd: ..."}`.
+
+## Locators
+
+Selector syntax (kept qtexpert-compatible so migrated suites read the
+same):
+
+- `name=MainWindow` (alias `objectName=`), `type=QPushButton`
+  (aliases `class=`, `className=`), `text=Send A File`
+  (alias `title=`), `window=History` (alias `windowTitle=`),
+  `visible=true`, `enabled=true`.
+- Bare string without `=` means `name=` (objectName match).
+- Values with spaces need quoting: `text="File Transfers"`
+  (single quotes work too); unquoted values stop at whitespace.
+- Search covers `QApplication::topLevelWidgets()` plus
+  `findChildren<QWidget*>()` **plus** `actions()` of
+  `QMenuBar`/`QToolBar`/`QMenu`/`QToolButton` (menus are `QAction`s, not
+  `QWidget`s, so the qtexpert agent could not see them at all). The
+  `visible` filter applies inside `find`.
+
+## Execution model: fire-and-post
+
+No synchronous `QTest::mouseClick`/`keyClick` (that hangs the server on
+`exec()` modals and asserts under Xvfb, see `done/spix-evaluation.md`):
+
+- `click` posts press+release `QMouseEvent`, `hover` posts a `MouseMove`
+  (+ `HoverMove`) pair, `send_key` posts press+release `QKeyEvent` — all
+  fire-and-post, the reply returns immediately.
+- Triggers that open `exec()` modals go through
+  `QTimer::singleShot(0, ...)` — the reply is sent before the nested
+  loop starts, so the connection stays alive.
+- Commands that must observe a result (`wait_for_object`,
+  `wait_for_gone`, `open_chat`) run a bounded local `QEventLoop`
+  (default 10s, overridable via `timeout`) and then reply. While the
+  local loop runs, the server is `busy`: a second pipelined request gets
+  `{"ok": false, "error": "busy"}`. The Robot library never pipelines
+  (one request at a time), so this is a guard, not a limit.
+
+## Commands (v1)
+
+| cmd | params | result |
+|---|---|---|
+| `wait_for_object` | `{locator, timeout?}` | `{found: true, class, objectName, visible}` or error `not found within Ns` |
+| `wait_for_gone` | `{locator, timeout?}` | `{gone: true}` or error `still present after Ns (class=... title="..." visible=... sameWindow=...)` — `sameWindow=false` means the object seen at entry is gone but a new one matches now (recreated); `visible=false` means close hid it but deletion never landed |
+| `object_exists` | `{locator}` | `{exists: bool}` |
+| `get_property` | `{locator, property}` | `{value: ...}`. `text`/`plainText` on a `QTextEdit`/`QPlainTextEdit`/`QLineEdit` reads its content (qtexpert parity: Qt has no `text` dynamic property on a `QTextEdit`); on a `ChatMessageView` (native chat, `type=lmcMessageLog` still matches via mapping) reads its `plainText` (app-side `model->data()` join); otherwise a plain Qt dynamic property |
+| `set_property` | `{locator, property, value}` | `{set: true}` |
+| `click` | `{locator}` | `{clicked: true}` (async post; for `QAction` — async `trigger()`) |
+| `hover` | `{locator, row?, column?}` (`col` alias for `column`) | `{hovered: true, objectName, class, x, y, row?, column?}` — post `MouseMove` (+ `HoverMove`) to the widget center (a `QTableWidget` without a cell hovers its `viewport()` center, where the item-view mouse logic lives), or to a `QTableWidget` cell center on its `viewport()` when `row`/`column` given (e.g. `EmojiPicker` grid). Fire-and-post, never blocks. `row`/`column` go together, both `>= 0` (numbers or numeric strings); a non-grid locator with `row`/`column` fails. When both `column` and `col` are present they must match, else the command fails |
+| `focus` | `{locator}` | `{focused: true, objectName, class, hasFocus}` — `QWidget::setFocus()` on the match (e.g. the `EmojiPicker` grid before an arrow-key walk, so the current cell paints its `Selected`/`HasFocus` Highlight). Synchronous, never blocks. Fails with `widget did not accept focus` when the widget does not report `hasFocus()` afterwards (popup not active yet) — retry the command instead of screenshotting an unfocused grid |
+| `trigger_action` | `{locator}` | `{triggered: "<action text>"}` — `QAction` only (menus/toolbars, matched by `text=` with `&` stripped, e.g. `text=History`); async `trigger()` via `singleShot(0)`, so an `exec()` modal opened by the slot cannot swallow the reply. Leaf commands win over same-named submenu titles (e.g. the `Help` item over the `Help` menu itself, whose trigger would only pop the dropdown): `topLevelWidgets()` order is not stable, so first-match would be a coin flip |
+| `dump_tree` | `{}` | `{tree: [...]}` — top-level widgets with children and actions (`objectName`, `class`, `visible`, `title`/`text`). The client library writes the `${OUTPUT_DIR}/*.json` files |
+| `get_log` | `{}` | `{path}` — this instance's trace file; empty when tracing is off (launch with `/trace`) |
+| `list_windows` | `{}` | `{windows: [{objectName, class, title, visible}]}` |
+| `grab_screenshot` | `{locator?, file, frame?}` | `{file}` (plus `x/y/width/height` for frame grabs) — default `QWidget::grab` (client area only); `frame=true` grabs real screen pixels of the top-level frame rect (native title bar + borders, bare Xvfb: same as client) |
+| `open_chat` | `{peer, timeout?}` | `{title}` — resolve `peer` by name or userId in the main-window contact tree, fire the same `tvUserList_itemActivated → chatStarting → startChat` path as keyboard Return (idempotent: reopens/shows the existing window), wait for a visible `ChatWindow`, return its title |
+| `close_app` | `{}` | `{closing: true}` — close all top-level windows first (exitApp parity: naked quit stalls under a WM), then async `QCoreApplication::quit`, reply first; 5s watchdog logs loudly and re-quits if the loop is still alive |
+| `type_text` | `{locator, text, send?}` | `{typed: true}` — set text on a `QTextEdit`/`QPlainTextEdit`/`QLineEdit` directly; with `send=true` (default) a `Return` press is posted right after, so the widget's own Enter handling runs (e.g. `ChatWindow::eventFilter → sendMessage`, honoring the `SendKeyMod` setting) |
+| `send_key` | `{locator?, key, modifiers?}` | `{sent: "<key>"}` — post press+release to the widget (or the active popup / focus widget / active window when `locator` is omitted). `key`: `Return Enter Tab Backtab Escape(Esc) Space Backspace Delete Home End Left Right Up Down` (case-insensitive). `modifiers`: array of `ctrl/control shift alt meta`. No printable characters — text entry goes through `type_text` |
+| `close_window` | `{locator}` | `{objectName, class, title, visible, isWindow, ptr}` — `QWidget::close()` on the top-level window matching `locator` (a child locator resolves to `QWidget::window()`), async `singleShot(0)`. The close itself is async, so `visible`/`isWindow`/`ptr` describe the post snapshot: `ptr` correlates this exact object with a later `wait_for_gone sameWindow` verdict. Deterministic counterpart of Escape: every lmc window that rejects on Escape installs its filter on **children** and the handler is only `close()` (`chatwindow.cpp`, `historywindow.cpp`, `helpwindow.cpp`, `transferwindow.cpp`), so an X-delivered Escape depends on the focus widget while this does not. Modeless reuse windows (Transfers, Chat Room) only hide; `WA_DeleteOnClose` windows are deleted |
+| `drop_urls` | `{locator, paths[], target?}` (`viewport`\|`widget`, default `viewport`) | `{dropped: true, accepted, urls, objectName, class, target}` — build a `QMimeData` with file:// urls from `paths` and deliver the real OS sequence `DragEnter → DragMove → Drop` (`CopyAction`) synchronously via `sendEvent`, so the widget's real drag path runs (`ChatWindow` input filter → `handleFileDrop`, or the window `dragEnter`/`dragMove`/`dropEvent` for `target=widget` on the `ChatWindow` itself). The full sequence matters: Qt only delivers a `Drop` to a target that accepted the `DragEnter`, a lone synthetic `Drop` never reaches widget event filters. `viewport` resolves a `QAbstractScrollArea` match to its `viewport()` (where `QTextEdit` drag events land); `accepted` is the `Drop`'s `isAccepted()` right after dispatch (existence/caps checks stay app-side: a swallowed drop still replies `ok:true` with `accepted:false`). Never blocks, no nested loop |
+| `set_geometry` | `{locator, x, y, width, height}` (`w`/`h` aliases) | `{objectName, class, title, x, y, width, height}` — `setGeometry + raise + activateWindow` on the top-level window matching `locator`, synchronous in the GUI thread. The window must be visible (place after show). Deterministic placement for E2E screenshots under bare Xvfb (no WM); the v3 layout (fits the 1024x768 worst leg) lives in `tests/robot/screenshots.robot` Variables. Bad fields fail naming the field (`missing x`, `width must be >= 1`) |
+| `open_window` | — | stub: `not implemented (phase 2)` |
+| `type_path` | — | stub: `not implemented (phase 2)` |
+
+`timeout` is seconds (number or `"10s"` string, Robot-style).
+
+## Post-mortem flow
+
+On GUI-subsystem OSes stdout is detached, so the trace file is the only
+app-side record. Query `get_log` while the agent is healthy; in teardown
+read the file from disk (a wedged agent answers nothing, the file stays
+readable). File lines follow the Qt message pattern
+`[yyyy.MM.dd hh:mm:ss.zzz threadid category] message` under the legacy
+3-line header; debug lines are present only when launched with `/trace`
+(silenced by default).
+
+## Notes / v1 limits
+
+- `open_chat` matches contacts by userId first, then by display name
+  (same precedence as the app's own lookups). The contact tree lives in
+  `tvUserList` (`mainwindow.ui`); item roles follow
+  `src/core/uidefinitions.h` (`IdRole = UserRole+1`,
+  `TypeRole = UserRole+2`, `"User"` marks a contact row).
+- Addressing is by peer name/userId, never by X window id — two open
+  chats stay distinguishable by title.
+- One server per process. `lan-messenger-test` carries the agent linked
+  in directly (same `lmc_core` startup as production via `lmcRunApplication`
+  with a pre-exec hook): same protocol, same port source
+  (`LMC_AGENT_PORT`, default 9999). `LMC_TEST_AGENT=0` disables the
+  server for production-like runs.
+- The agent emits no X events (no focus stealing, no window ids), so
+  suites run under Xvfb without a window manager or xdotool.
