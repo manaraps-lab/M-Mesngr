@@ -1,0 +1,158 @@
+name: MANARA Windows build
+
+# Lean Windows-only pipeline (taken from build.yml's build-windows job, with the
+# inputs fixed): build with Qt 6.8.3 + MSVC, run ALL unit tests (including the
+# MANARA transfer/path/digest tests), then build the NSIS installer.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: manara-windows-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-windows:
+    runs-on: windows-2022
+    env:
+      PKG_VERSION: ${{ format('0.1.0.{0}', github.run_number) }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+
+      # Explicit prohibition instead of compound conditions below: choco
+      # OpenSSL exists only for fast test builds. Whatever ships links vcpkg
+      # OpenSSL. Fails here, before any toolchain download burns minutes.
+      - uses: TheMrMilchmann/setup-msvc-dev@v4
+        with:
+          arch: x64
+
+      - uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.8.3'
+          arch: win64_msvc2022_64
+          cache: true
+
+      - name: Install OpenSSL
+        run: vcpkg install openssl:x64-windows
+
+      - name: Prepare OpenSSL paths
+        shell: pwsh
+        run: |
+          $root = $env:VCPKG_INSTALLATION_ROOT
+          New-Item -ItemType Directory -Force openssl/include, openssl/lib, openssl/bin | Out-Null
+          Copy-Item -Recurse $root/installed/x64-windows/include/openssl openssl/include/
+          Copy-Item $root/installed/x64-windows/lib/libcrypto.lib openssl/lib/
+          Copy-Item $root/installed/x64-windows/bin/libcrypto-*.dll openssl/bin/
+          Copy-Item $root/installed/x64-windows/bin/libssl-*.dll openssl/bin/
+
+      # Fast path (default): prebuilt Shining Light OpenSSL instead of
+      # compiling the vcpkg port. Staged into the same ./openssl layout, so
+      # Configure below is untouched. Floats on latest by design (speed over
+      # pinning); the honest path is vcpkg, pinned by its baseline. The
+      # install dir moved across majors (OpenSSL-Win64 up to 3.x, OpenSSL
+      # since 4.x) and the import libs live under lib/VC/..., but
+      # FindOpenSSL looks in lib/ — hence the search + copy-up below
+      # (known Shining Light + CMake gotchas).
+
+      - name: Configure
+        shell: bash
+        run: |
+          args=(-S . -B build -DCMAKE_BUILD_TYPE=Release "-DLMC_RELEASE_DIR=$PWD/release" "-DLMC_VERSION=$PKG_VERSION" -DLMC_QTEST_FILE_LOGS=ON)
+          if [ -d openssl ]; then
+            args+=("-DOPENSSL_ROOT_DIR=$PWD/openssl")
+          fi
+          cmake "${args[@]}"
+
+      - name: Build release layout
+        run: cmake --build build --config Release --target package-local --parallel
+
+      # VERSIONINFO is generated at configure time from LMC_VERSION.
+      # Fail here, not after packaging, if the string stamp drifted.
+      # Numeric shape needs no check: derivation always emits 4xuint16
+      # (clamp collides above 65535 outside CI, strings still differ).
+      - name: Verify exe version stamp
+        shell: pwsh
+        run: |
+          $vi = (Get-Item release\lmc.exe).VersionInfo
+          Write-Host "FileVersionRaw: $($vi.FileVersionRaw)"
+          Write-Host "ProductVersionRaw: $($vi.ProductVersionRaw)"
+          Write-Host "FileVersion: $($vi.FileVersion)"
+          Write-Host "ProductVersion: $($vi.ProductVersion)"
+          if ($vi.FileVersion -ne $env:PKG_VERSION) {
+            throw "lmc.exe FileVersion '$($vi.FileVersion)' != PKG_VERSION '$env:PKG_VERSION'" }
+          if ($vi.ProductVersion -ne $env:PKG_VERSION) {
+            throw "lmc.exe ProductVersion '$($vi.ProductVersion)' != PKG_VERSION '$env:PKG_VERSION'" }
+
+      - name: Deploy Qt runtime
+        shell: cmd
+        run: |
+          set QTDIR=%QT_ROOT_DIR%
+          windeployqt --release release\lmc.exe
+
+      # setup.nsi installs vc_redist.x64.exe from this tree: windeployqt
+      # stages it, fail fast if it didn't.
+      - name: Assert VC++ redist staged
+        shell: pwsh
+        run: |
+          if (-not (Test-Path release/vc_redist.x64.exe)) { throw 'vc_redist.x64.exe missing beside lmc.exe' }
+
+      # QSslSocket needs the Qt 6 TLS backend plugins; deploy them explicitly
+      # in case windeployqt skipped them.
+      - name: Ensure TLS plugins
+        shell: pwsh
+        run: |
+          $dst = "release/tls"
+          if (-not (Test-Path $dst)) {
+            Copy-Item -Recurse "$env:QT_ROOT_DIR/plugins/tls" $dst
+          }
+
+      - name: Build unit tests
+        run: cmake --build build --config Release --target lmc_unit_tests --parallel
+
+      - name: Unit tests
+        run: ctest --test-dir build -C Release --output-on-failure
+
+      # Failure-only: the gate run writes qtest-<name>.txt beside LastTest.log
+      # (see tests/CMakeLists.txt), grep the failing lines into the console.
+      # Ends with exit 0 so the upload below still runs.
+      - name: Diagnose failed unit tests
+        if: failure()
+        shell: pwsh
+        run: |
+          if (Test-Path build\Testing\Temporary\qtest-*.txt) { Select-String -Path build\Testing\Temporary\qtest-*.txt -Pattern '^(FAIL!|Totals:)' -Context 0,1 | ForEach-Object { $_.Line; $_.Context.PostContext } } else { Write-Host 'no qtest-*.txt' }
+          if (Test-Path build\Testing\Temporary\LastTestsFailed.log) { Get-Content build\Testing\Temporary\LastTestsFailed.log } else { Write-Host 'no LastTestsFailed.log' }
+          exit 0
+
+      - name: Upload unit test diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: diagnostics-windows-x64
+          path: |
+            build/Testing/Temporary/LastTest.log
+            build/Testing/Temporary/LastTestsFailed.log
+            build/Testing/Temporary/qtest-*.txt
+          if-no-files-found: warn
+          retention-days: 1
+
+      # The test layout is a COPY of the release tree in $RUNNER_TEMP: the
+      # original release is only read, never modified, so the installer
+      # step always sees the pristine tree. The OpenSSL DLLs ride along into
+      # the test layout (never into the installer: this step only runs
+      # off-release).
+      - name: Build installer
+        shell: cmd
+        run: |
+          choco install nsis -y --no-progress
+          cd setup\win32
+          call setup.bat release %PKG_VERSION%
+
+      - name: Upload packages
+        uses: actions/upload-artifact@v7
+        with:
+          name: packages-windows
+          path: setup/lmc-*-win64.exe
+          if-no-files-found: error
+          retention-days: 3
