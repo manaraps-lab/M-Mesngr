@@ -13,7 +13,7 @@ QLabel#lblUserName { color: #EAF0FF; font-weight: 600; }
 QLabel#lblStatus { color: #A3B1D6; }
 QLineEdit#txtNote { background: transparent; border: 1px solid transparent; border-radius: 8px; color: #A3B1D6; padding: 2px 6px; }
 QLineEdit#txtNote:hover, QLineEdit#txtNote:focus { background: #0F1838; border-color: #243163; color: #EAF0FF; }
-QWidget#wgtToolBar { background: #0F1838; border-bottom: 1px solid #1E2A57; }
+QWidget#wgtToolBar { background: #0F1838; border-top: 1px solid #1E2A57; }
 QTreeWidget#tvUserList { background: #0F1838; color: #EAF0FF; border: 1px solid #1E2A57; border-radius: 12px; outline: 0; }
 
 /* ---- chat window ---- */
@@ -71,3 +71,21 @@ QListView#lvTransferList { selection-background-color: #162556; selection-color:
 QLineEdit { background: #0F1838; color: #EAF0FF; border: 1px solid #243163; border-radius: 8px; padding: 3px 8px; placeholder-text-color: #8C99C4; selection-background-color: #1E4FC2; selection-color: #FFFFFF; }
 QLineEdit:focus { border-color: #1E4FC2; }
 QLineEdit#txtNote { background: transparent; border: none; padding: 0; color: #B4C0E6; }
+
+/* ---- MANARA header, search, empty state ---- */
+QWidget#brandBar { background: transparent; }
+QLabel#brandName { color: #EAF0FF; font-size: 13pt; font-weight: 800; letter-spacing: 1px; }
+QLabel#brandSub { color: #F5A04A; font-size: 10pt; font-weight: 600; }
+QLineEdit#txtSearch { background: #0F1838; border: 1px solid #243163; border-radius: 14px; padding: 6px 12px; color: #EAF0FF; }
+QLineEdit#txtSearch:focus { border-color: #1E4FC2; }
+QLabel#lblEmpty { color: #8C99C4; background: #0F1838; border: 1px solid #1E2A57; border-radius: 12px; padding: 24px; }
+
+/* ---- bottom tab bar, menu button, chat header ---- */
+QWidget#wgtToolBar QToolButton { color: #B4C0E6; font-size: 8pt; padding: 4px 6px; border-radius: 10px; min-width: 52px; }
+QWidget#wgtToolBar QToolButton:hover { background: #162556; color: #FFFFFF; }
+QWidget#wgtToolBar QToolButton:disabled { color: #5C6896; }
+QToolButton#btnMainMenu { color: #EAF0FF; font-size: 16pt; font-weight: 700; border: none; padding: 0 8px; }
+QToolButton#btnMainMenu::menu-indicator { image: none; }
+QWidget#chatHeader { background: #0F1838; border-bottom: 1px solid #1E2A57; }
+QLabel#chatHeaderName { color: #EAF0FF; font-size: 12pt; font-weight: 700; }
+QLabel#chatHeaderNote { color: #8C99C4; font-size: 9pt; }

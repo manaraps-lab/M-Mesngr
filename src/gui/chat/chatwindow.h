@@ -84,6 +84,7 @@ private slots:
 private:
   void createEmojiMenu(void);
   void createToolBar(void);
+  void createHeader(User* pRemoteUser);
   void setUIText(void);
   void sendMessage(void);
   void sendFile(QString* lpszFilePath);

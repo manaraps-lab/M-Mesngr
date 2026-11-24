@@ -27,6 +27,10 @@
 #include <QPixmap>
 #include <QIcon>
 #include <QDateTime>
+#include <QLabel>
+#include <QPainter>
+#include <QPainterPath>
+#include <QHBoxLayout>
 #include "core/shared.h"
 #include "core/settings.h"
 #include "core/stdlocation.h"
@@ -83,6 +87,61 @@ lmcChatWindow::lmcChatWindow(QWidget* parent, Qt::WindowFlags flags)
 lmcChatWindow::~lmcChatWindow(void) {
 }
 
+// Slim header: round avatar, name and note of the person you are talking to.
+void lmcChatWindow::createHeader(User* pRemoteUser) {
+  QVBoxLayout* box = qobject_cast<QVBoxLayout*>(layout());
+  if(!box || !pRemoteUser)
+    return;
+  QWidget* bar = new QWidget(this);
+  bar->setObjectName("chatHeader");
+  QHBoxLayout* row = new QHBoxLayout(bar);
+  row->setContentsMargins(12, 8, 12, 8);
+  row->setSpacing(10);
+
+  const int d = 36;
+  const qreal dpr = devicePixelRatioF();
+  QPixmap pm(QSize(d, d) * dpr);
+  pm.setDevicePixelRatio(dpr);
+  pm.fill(Qt::transparent);
+  {
+    QPainter p(&pm);
+    p.setRenderHint(QPainter::Antialiasing);
+    p.setRenderHint(QPainter::SmoothPixmapTransform);
+    QPainterPath clip;
+    clip.addEllipse(QRectF(0, 0, d, d));
+    p.setClipPath(clip);
+    QPixmap src(pRemoteUser->avatarPath);
+    if(!src.isNull()) {
+      p.drawPixmap(QRect(0, 0, d, d), src);
+    } else {
+      p.fillRect(QRect(0, 0, d, d), QColor("#1E4FC2"));
+      p.setPen(Qt::white);
+      QFont f = font();
+      f.setBold(true);
+      f.setPixelSize(16);
+      p.setFont(f);
+      p.drawText(QRect(0, 0, d, d), Qt::AlignCenter, pRemoteUser->name.left(1).toUpper());
+    }
+  }
+  QLabel* avatar = new QLabel(bar);
+  avatar->setPixmap(pm);
+  avatar->setFixedSize(d, d);
+
+  QVBoxLayout* text = new QVBoxLayout();
+  text->setSpacing(0);
+  QLabel* name = new QLabel(pRemoteUser->name, bar);
+  name->setObjectName("chatHeaderName");
+  QLabel* note = new QLabel(pRemoteUser->note.trimmed(), bar);
+  note->setObjectName("chatHeaderNote");
+  note->setVisible(!note->text().isEmpty());
+  text->addWidget(name);
+  text->addWidget(note);
+
+  row->addWidget(avatar);
+  row->addLayout(text, 1);
+  box->insertWidget(0, bar);
+}
+
 void lmcChatWindow::init(User* pLocalUser, User* pRemoteUser, bool connected) {
   localId = pLocalUser->id;
   localName = pLocalUser->name;
@@ -105,6 +164,7 @@ void lmcChatWindow::init(User* pLocalUser, User* pRemoteUser, bool connected) {
 
   createEmojiMenu();
   createToolBar();
+  createHeader(pRemoteUser);
 
   //	Log takes extra space, composer collapses to its minimum.
   ui.splitter->setStretchFactor(0, 1);

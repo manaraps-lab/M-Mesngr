@@ -3,6 +3,11 @@
 // Copyright (c) 2026 LAN Messenger.
 #include "mainwindow.h"
 #include <QDesktopServices>
+#include <QLabel>
+#include <QLineEdit>
+#include <QHBoxLayout>
+#include <QVBoxLayout>
+#include <QPixmap>
 #include <QTimer>
 #include <QRandomGenerator>
 #include <QUrl>
@@ -64,7 +69,9 @@ void lmcMainWindow::init(User* pLocalUser, QList<Group>* pGroupList, bool connec
   this->pLocalUser = pLocalUser;
 
   createMainMenu();
+  createBrandBar();
   createToolBar();
+  createSearchAndEmptyState();
   createStatusMenu();
   createAvatarMenu();
 
@@ -233,6 +240,9 @@ void lmcMainWindow::addUser(User* pUser) {
   }
 
   sendAvatar(&pUser->id);
+  updateEmptyState();
+  if(txtSearch && !txtSearch->text().isEmpty())
+    applySearchFilter(txtSearch->text());
 }
 
 void lmcMainWindow::updateUser(User* pUser) {
@@ -260,6 +270,7 @@ void lmcMainWindow::removeUser(QString* lpszUserId) {
 
   QTreeWidgetItem* pGroup = pItem->parent();
   pGroup->removeChild(pItem);
+  updateEmptyState();
 
   if(isHidden() || !isActiveWindow()) {
     QString msg = tr("%1 is offline.");
@@ -702,6 +713,107 @@ void lmcMainWindow::txtNote_lostFocus(void) {
   sendMessage(MT_Note, NULL, &note);
 }
 
+// ---- MANARA header, search field and empty state ----
+void lmcMainWindow::createBrandBar(void) {
+  QWidget* bar = new QWidget(this);
+  bar->setObjectName("brandBar");
+  QHBoxLayout* row = new QHBoxLayout(bar);
+  row->setContentsMargins(4, 2, 4, 2);
+  row->setSpacing(8);
+
+  QLabel* mark = new QLabel(bar);
+  mark->setObjectName("brandMark");
+  mark->setPixmap(QIcon(IDR_APPICON).pixmap(QSize(28, 28)));
+  mark->setFixedSize(28, 28);
+
+  QLabel* name = new QLabel(QStringLiteral("MANARA"), bar);
+  name->setObjectName("brandName");
+  QLabel* sub = new QLabel(QStringLiteral("Messenger"), bar);
+  sub->setObjectName("brandSub");
+
+  row->addWidget(mark);
+  row->addWidget(name);
+  row->addWidget(sub);
+  row->addStretch(1);
+
+  // One menu button replaces the classic menu bar (same actions, same menus).
+  QToolButton* menuButton = new QToolButton(bar);
+  menuButton->setObjectName("btnMainMenu");
+  menuButton->setText(QString::fromUtf8("\xE2\x8B\xAE"));
+  menuButton->setToolTip(tr("Menu"));
+  menuButton->setPopupMode(QToolButton::InstantPopup);
+  menuButton->setAutoRaise(true);
+  QMenu* allMenus = new QMenu(menuButton);
+  if(pMainMenu) {
+    const QList<QAction*> top = pMainMenu->actions();
+    for(QAction* a : top)
+      allMenus->addAction(a);
+    pMainMenu->hide();
+  }
+  menuButton->setMenu(allMenus);
+  row->addWidget(menuButton);
+
+  QVBoxLayout* box = qobject_cast<QVBoxLayout*>(layout());
+  if(box)
+    box->insertWidget(0, bar);
+}
+
+void lmcMainWindow::createSearchAndEmptyState(void) {
+  QVBoxLayout* box = qobject_cast<QVBoxLayout*>(layout());
+  if(!box)
+    return;
+  const int treeIndex = box->indexOf(ui.tvUserList);
+
+  txtSearch = new QLineEdit(this);
+  txtSearch->setObjectName("txtSearch");
+  txtSearch->setClearButtonEnabled(true);
+  txtSearch->setPlaceholderText(tr("Search people..."));
+  connect(txtSearch, &QLineEdit::textChanged, this, &lmcMainWindow::applySearchFilter);
+  box->insertWidget(treeIndex, txtSearch);
+
+  lblEmpty = new QLabel(this);
+  lblEmpty->setObjectName("lblEmpty");
+  lblEmpty->setAlignment(Qt::AlignCenter);
+  lblEmpty->setWordWrap(true);
+  lblEmpty->setTextFormat(Qt::RichText);
+  lblEmpty->setText(QStringLiteral("<p style='font-size:15pt;font-weight:600'>%1</p><p>%2</p>")
+                        .arg(tr("No one is online yet").toHtmlEscaped(),
+                             tr("People on your network appear here automatically.").toHtmlEscaped()));
+  box->insertWidget(treeIndex + 2, lblEmpty, 1);
+  box->removeWidget(ui.wgtToolBar);
+  box->addWidget(ui.wgtToolBar);
+  updateEmptyState();
+}
+
+void lmcMainWindow::updateEmptyState(void) {
+  if(!lblEmpty)
+    return;
+  int users = 0;
+  for(int i = 0; i < ui.tvUserList->topLevelItemCount(); i++)
+    users += ui.tvUserList->topLevelItem(i)->childCount();
+  lblEmpty->setVisible(users == 0);
+  ui.tvUserList->setVisible(users != 0);
+  if(txtSearch)
+    txtSearch->setVisible(users != 0);
+}
+
+void lmcMainWindow::applySearchFilter(const QString& text) {
+  const QString needle = text.trimmed();
+  for(int g = 0; g < ui.tvUserList->topLevelItemCount(); g++) {
+    QTreeWidgetItem* group = ui.tvUserList->topLevelItem(g);
+    int shown = 0;
+    for(int u = 0; u < group->childCount(); u++) {
+      QTreeWidgetItem* item = group->child(u);
+      const bool match = needle.isEmpty() || item->text(0).contains(needle, Qt::CaseInsensitive) ||
+                         item->data(0, SubtextRole).toString().contains(needle, Qt::CaseInsensitive);
+      item->setHidden(!match);
+      if(match)
+        ++shown;
+    }
+    group->setHidden(!needle.isEmpty() && shown == 0);
+  }
+}
+
 void lmcMainWindow::createMainMenu(void) {
   pMainMenu = new QMenuBar(this);
   pFileMenu = pMainMenu->addMenu("&Messenger");
@@ -857,14 +969,16 @@ void lmcMainWindow::createToolBar(void) {
   pToolBar->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
   ui.toolBarLayout->addWidget(pToolBar);
 
-  pToolBar->setToolButtonStyle(Qt::ToolButtonIconOnly);
+  pToolBar->setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
   toolChatAction = ActionHelper::createAction(pToolBar, "&Conversation", this,
                                               &lmcMainWindow::userConversationAction_triggered,
                                               QIcon(QPixmap(IDR_CHAT, "PNG")));
+  toolChatAction->setIconText(tr("Chat"));
   toolChatAction->setEnabled(false);
   toolFileAction = ActionHelper::createAction(pToolBar, "Send &File", this,
                                               &lmcMainWindow::userFileAction_triggered,
                                               QIcon(QPixmap(IDR_FILE, "PNG")));
+  toolFileAction->setIconText(tr("Files"));
   toolFileAction->setEnabled(false);
   QWidget* pSpacer1 = new QWidget(pToolBar);
   pSpacer1->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
@@ -872,15 +986,18 @@ void lmcMainWindow::createToolBar(void) {
   toolBroadcastAction = ActionHelper::createAction(pToolBar, "Send &Broadcast Message", this,
                                                    &lmcMainWindow::userBroadcastAction_triggered,
                                                    QIcon(QPixmap(IDR_BROADCASTMSG, "PNG")));
+  toolBroadcastAction->setIconText(tr("Broadcast"));
   QWidget* pSpacer2 = new QWidget(pToolBar);
   pSpacer2->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
   pToolBar->addWidget(pSpacer2);
   toolChatRoomAction = ActionHelper::createAction(pToolBar, "&New Chat Room", this,
                                                   &lmcMainWindow::chatRoomAction_triggered,
                                                   QIcon(QPixmap(IDR_NEWCHATROOM, "PNG")));
+  toolChatRoomAction->setIconText(tr("New room"));
   toolPublicChatAction = ActionHelper::createAction(pToolBar, "&Public Chat", this,
                                                     &lmcMainWindow::publicChatAction_triggered,
                                                     QIcon(QPixmap(IDR_CHATROOM, "PNG")));
+  toolPublicChatAction->setIconText(tr("Public"));
 
   //	QToolBar buttons do not take Tab focus by default, so enable it explicitly.
   QToolButton* btnChat = qobject_cast<QToolButton*>(pToolBar->widgetForAction(toolChatAction));

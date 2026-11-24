@@ -13,7 +13,7 @@ QLabel#lblUserName { color: #0F1A3A; font-weight: 600; }
 QLabel#lblStatus { color: #5B6785; }
 QLineEdit#txtNote { background: transparent; border: 1px solid transparent; border-radius: 8px; color: #5B6785; padding: 2px 6px; }
 QLineEdit#txtNote:hover, QLineEdit#txtNote:focus { background: #FFFFFF; border-color: #D9E0EE; color: #0F1A3A; }
-QWidget#wgtToolBar { background: #FFFFFF; border-bottom: 1px solid #E3E8F1; }
+QWidget#wgtToolBar { background: #FFFFFF; border-top: 1px solid #E3E8F1; }
 QTreeWidget#tvUserList { background: #FFFFFF; border: 1px solid #E3E8F1; border-radius: 12px; outline: 0; }
 
 /* ---- chat window ---- */
@@ -69,3 +69,21 @@ QListView#lvTransferList { selection-background-color: #EAF1FD; selection-color:
 
 /* ---- text fields ---- */
 QLineEdit { placeholder-text-color: #8A94AD; }
+
+/* ---- MANARA header, search, empty state ---- */
+QWidget#brandBar { background: transparent; }
+QLabel#brandName { color: #0F1A3A; font-size: 13pt; font-weight: 800; letter-spacing: 1px; }
+QLabel#brandSub { color: #F28C28; font-size: 10pt; font-weight: 600; }
+QLineEdit#txtSearch { background: #FFFFFF; border: 1px solid #E3E8F1; border-radius: 14px; padding: 6px 12px; color: #0F1A3A; }
+QLineEdit#txtSearch:focus { border-color: #1E4FC2; }
+QLabel#lblEmpty { color: #6B7794; background: #FFFFFF; border: 1px solid #E3E8F1; border-radius: 12px; padding: 24px; }
+
+/* ---- bottom tab bar, menu button, chat header ---- */
+QWidget#wgtToolBar QToolButton { color: #4A5575; font-size: 8pt; padding: 4px 6px; border-radius: 10px; min-width: 52px; }
+QWidget#wgtToolBar QToolButton:hover { background: #EAF1FD; color: #1E4FC2; }
+QWidget#wgtToolBar QToolButton:disabled { color: #A9B2C7; }
+QToolButton#btnMainMenu { color: #0F1A3A; font-size: 16pt; font-weight: 700; border: none; padding: 0 8px; }
+QToolButton#btnMainMenu::menu-indicator { image: none; }
+QWidget#chatHeader { background: #FFFFFF; border-bottom: 1px solid #E3E8F1; }
+QLabel#chatHeaderName { color: #0F1A3A; font-size: 12pt; font-weight: 700; }
+QLabel#chatHeaderNote { color: #6B7794; font-size: 9pt; }
