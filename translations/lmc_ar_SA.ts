@@ -192,11 +192,11 @@
     <name>ChatMessageView</name>
     <message>
         <source>&amp;Copy</source>
-        <translation>&amp;نسخ</translation>
+        <translation>نسخ</translation>
     </message>
     <message>
         <source>Select &amp;All</source>
-        <translation>اختيار &amp;الكل</translation>
+        <translation>اختيار الكل</translation>
     </message>
     <message>
         <source>Accept</source>
@@ -917,19 +917,19 @@
     </message>
     <message>
         <source>&amp;Conversation</source>
-        <translation>&amp;محادثة</translation>
+        <translation>محادثة</translation>
     </message>
     <message>
         <source>Send &amp;File</source>
-        <translation>ارسال &amp;ملف</translation>
+        <translation>ارسال ملف</translation>
     </message>
     <message>
         <source>Get &amp;Information</source>
-        <translation>احضار &amp;معلومات</translation>
+        <translation>احضار معلومات</translation>
     </message>
     <message>
         <source>&amp;Save As...</source>
-        <translation>&amp;حفظ باسم...</translation>
+        <translation>حفظ باسم...</translation>
     </message>
     <message>
         <source>Save this conversation</source>
@@ -957,7 +957,7 @@
     </message>
     <message>
         <source>&amp;Add Contacts...</source>
-        <translation>&amp;اضافة جهة اتصال...</translation>
+        <translation>اضافة جهة اتصال...</translation>
     </message>
     <message>
         <source>Add people to this conversation</source>
@@ -1020,23 +1020,23 @@
     </message>
     <message>
         <source>Send A &amp;File...</source>
-        <translation>ارسال &amp;ملف...</translation>
+        <translation>ارسال ملف...</translation>
     </message>
     <message>
         <source>Send A Fol&amp;der...</source>
-        <translation>إرسال مج&amp;لد...</translation>
+        <translation>إرسال مجلد...</translation>
     </message>
     <message>
         <source>&amp;Save As...</source>
-        <translation>&amp;حفظ باسم...</translation>
+        <translation>حفظ باسم...</translation>
     </message>
     <message>
         <source>&amp;History</source>
-        <translation>&amp;تأريخ</translation>
+        <translation>تأريخ</translation>
     </message>
     <message>
         <source>File &amp;Transfers</source>
-        <translation>&amp;نقل ملف</translation>
+        <translation>نقل ملف</translation>
     </message>
     <message>
         <source>Send a file to %1</source>
@@ -1204,99 +1204,99 @@ File may not exist, or may not be compatible with this version of %2.</source>
     </message>
     <message>
         <source>&amp;Messenger</source>
-        <translation>&amp;ماسنجر</translation>
+        <translation>ماسنجر</translation>
     </message>
     <message>
         <source>&amp;New Chat Room</source>
-        <translation>&amp;غرفة محادثة جديدة</translation>
+        <translation>غرفة محادثة جديدة</translation>
     </message>
     <message>
         <source>&amp;Public Chat</source>
-        <translation>&amp;محادثة عامة</translation>
+        <translation>محادثة عامة</translation>
     </message>
     <message>
         <source>&amp;Refresh Contacts List</source>
-        <translation>&amp;تحديث قائمة الاتصالات</translation>
+        <translation>تحديث قائمة الاتصالات</translation>
     </message>
     <message>
         <source>E&amp;xit</source>
-        <translation>&amp;خروج</translation>
+        <translation>خروج</translation>
     </message>
     <message>
         <source>&amp;Tools</source>
-        <translation>&amp;ادوات</translation>
+        <translation>ادوات</translation>
     </message>
     <message>
         <source>&amp;History</source>
-        <translation>&amp;التأريخ</translation>
+        <translation>التأريخ</translation>
     </message>
     <message>
         <source>File &amp;Transfers</source>
-        <translation>&amp;نقل ملفات</translation>
+        <translation>نقل ملفات</translation>
     </message>
     <message>
         <source>&amp;Preferences</source>
-        <translation>&amp;تفضيلات</translation>
+        <translation>تفضيلات</translation>
     </message>
     <message>
         <source>&amp;Help</source>
-        <translation>&amp;مساعدة</translation>
+        <translation>مساعدة</translation>
     </message>
     <message>
         <source>%1 &amp;online</source>
-        <translation>%1 &amp;اونلاين</translation>
+        <translation>%1 اونلاين</translation>
     </message>
     <message>
         <source>Check for &amp;Updates...</source>
-        <translation>تحقق من ال&amp;تحديثات...</translation>
+        <translation>تحقق من التحديثات...</translation>
     </message>
     <message>
         <source>&amp;About</source>
-        <translation>&amp;حول</translation>
+        <translation>حول</translation>
     </message>
     <message>
         <source>&amp;Show %1</source>
-        <translation>&amp;عرض %1</translation>
+        <translation>عرض %1</translation>
     </message>
     <message>
         <source>&amp;Change Status</source>
-        <translation>&amp;تغير الحالة</translation>
+        <translation>تغير الحالة</translation>
     </message>
     <message>
         <source>Add &amp;New Group</source>
-        <translation>اضافة &amp;مجموعة جديدة</translation>
+        <translation>اضافة مجموعة جديدة</translation>
     </message>
     <message>
         <source>&amp;Rename This Group</source>
-        <translation>اعادة ت&amp;سمية المجموعة</translation>
+        <translation>اعادة تسمية المجموعة</translation>
     </message>
     <message>
         <source>&amp;Delete This Group</source>
-        <translation>&amp;حذف هذه المجموعة</translation>
+        <translation>حذف هذه المجموعة</translation>
     </message>
     <message>
         <source>&amp;Conversation</source>
-        <translation>&amp;محادثة</translation>
+        <translation>محادثة</translation>
     </message>
     <message>
         <source>Send &amp;Broadcast Message</source>
-        <translation>ارسال &amp;استقبال الرسائل</translation>
+        <translation>ارسال استقبال الرسائل</translation>
     </message>
     <message>
         <source>Send &amp;File</source>
-        <translation>ارسال &amp;ملف</translation>
+        <translation>ارسال ملف</translation>
     </message>
     <message>
         <source>Send Fol&amp;der</source>
-        <translation>إرسال مج&amp;لد</translation>
+        <translation>إرسال مجلد</translation>
     </message>
     <message>
         <source>Get &amp;Information</source>
-        <translation>احضار &amp;المعلومات</translation>
+        <translation>احضار المعلومات</translation>
     </message>
     <message>
         <source>&amp;Browse for more pictures...</source>
-        <translation>استعراض لمزيد من ال&amp;صور...</translation>
+        <translation>استعراض لمزيد من الصور...</translation>
     </message>
     <message>
         <source>%1 will continue to run in the background. Activate this icon to restore the application window.</source>
