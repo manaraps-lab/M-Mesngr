@@ -4,6 +4,8 @@
 #pragma once
 
 #include <QWidget>
+#include <QLineEdit>
+#include <QLabel>
 #include <QString>
 #include <QList>
 #include <QVariant>
@@ -130,6 +132,12 @@ private:
   Ui::MainWindow ui;
   lmcSettings* pSettings;
   QMenuBar* pMainMenu;
+  QLineEdit* txtSearch = nullptr;
+  QLabel* lblEmpty = nullptr;
+  void createBrandBar();
+  void createSearchAndEmptyState();
+  void updateEmptyState();
+  void applySearchFilter(const QString& text);
   QSystemTrayIcon* pTrayIcon;
   QMenu* pFileMenu;
   QMenu* pToolsMenu;
