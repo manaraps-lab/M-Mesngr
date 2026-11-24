@@ -1,7 +1,7 @@
 /* MANARA Messenger - light. Generated from docs/design/tokens.json.
  * Install: copy to the user theme folder as custom.qss (see docs/THEME.md).
  * Object names below are the real ones from the .ui files (verified against
- * src/gui/*/*.ui); not yet checked visually on Windows. */
+ * the .ui files under src/gui); not yet checked visually on Windows. */
 
 QWidget#MainWindow, QWidget#ChatWindow, QWidget#TransferWindow, QDialog#SettingsDialog {
   background: #F5F7FB; color: #0F1A3A;
@@ -15,9 +15,6 @@ QLineEdit#txtNote { background: transparent; border: 1px solid transparent; bord
 QLineEdit#txtNote:hover, QLineEdit#txtNote:focus { background: #FFFFFF; border-color: #D9E0EE; color: #0F1A3A; }
 QWidget#wgtToolBar { background: #FFFFFF; border-bottom: 1px solid #E3E8F1; }
 QTreeWidget#tvUserList { background: #FFFFFF; border: 1px solid #E3E8F1; border-radius: 12px; outline: 0; }
-QTreeWidget#tvUserList::item { padding: 6px; border-radius: 8px; }
-QTreeWidget#tvUserList::item:hover { background: #EAF1FD; }
-QTreeWidget#tvUserList::item:selected { background: #EAF1FD; border: 1px solid #CFE0FA; color: #0F1A3A; }
 
 /* ---- chat window ---- */
 QTextEdit#txtMessage { background: #FFFFFF; border: 1px solid #D9E0EE; border-radius: 12px; color: #0F1A3A; padding: 6px; selection-background-color: #1E4FC2; selection-color: #FFFFFF; }
@@ -50,3 +47,25 @@ QScrollBar:vertical { background: transparent; width: 10px; margin: 0; }
 QScrollBar::handle:vertical { background: #D9E0EE; border-radius: 5px; min-height: 24px; }
 QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }
 QToolTip { background: #FFFFFF; color: #0F1A3A; border: 1px solid #D9E0EE; padding: 4px 6px; }
+
+/* ---- menus and tool bars ---- */
+QMenuBar { background: #F5F7FB; color: #0F1A3A; }
+QMenuBar::item { padding: 6px 12px; border-radius: 8px; background: transparent; }
+QMenuBar::item:selected { background: #EAF1FD; }
+QMenu { background: #FFFFFF; color: #0F1A3A; border: 1px solid #D9E0EE; border-radius: 10px; padding: 6px; }
+QMenu::item { padding: 6px 22px 6px 12px; border-radius: 8px; }
+QMenu::item:selected { background: #EAF1FD; color: #0F1A3A; }
+QMenu::separator { height: 1px; background: #E3E8F1; margin: 4px 8px; }
+QToolBar { background: transparent; border: none; spacing: 6px; }
+QToolButton { background: transparent; border: 1px solid transparent; border-radius: 10px; padding: 5px; }
+QToolButton:hover { background: #EAF1FD; border-color: #CFE0FA; }
+QToolButton:pressed { background: #CFE0FA; }
+QToolButton:disabled { opacity: 0.4; }
+QToolButton::menu-indicator { image: none; }
+QTreeWidget#tvUserList::item, QTreeWidget#tvUserList::item:selected, QTreeWidget#tvUserList::item:hover { background: transparent; border: none; }
+QTreeWidget#tvUserList { show-decoration-selected: 0; alternate-background-color: #FFFFFF; selection-background-color: transparent; selection-color: palette(text); }
+QTreeWidget#tvUserList::branch { background: transparent; }
+QListView#lvTransferList { selection-background-color: #EAF1FD; selection-color: #0F1A3A; }
+
+/* ---- text fields ---- */
+QLineEdit { placeholder-text-color: #8A94AD; }

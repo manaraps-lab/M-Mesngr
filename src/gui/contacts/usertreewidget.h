@@ -71,6 +71,9 @@ protected:
   void contextMenuEvent(QContextMenuEvent* event);
   void mouseReleaseEvent(QMouseEvent* event);
   void keyPressEvent(QKeyEvent* event);
+  //  The delegate draws the whole row (card, selection, group label); the
+  //  style's own row panel would paint a rectangular selection box under it.
+  void drawRow(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index) const override;
 
 private:
   lmcUserTreeWidgetDelegate* itemDelegate;

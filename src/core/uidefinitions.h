@@ -159,6 +159,6 @@ enum UserListView {
 };
 
 #define ULV_COUNT 2
-const int itemViewHeight[] = {36, 20};
+const int itemViewHeight[] = {60, 34};
 
 #define RTL_LAYOUT "RTL"

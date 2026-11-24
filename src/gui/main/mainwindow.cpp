@@ -853,7 +853,7 @@ void lmcMainWindow::createToolBar(void) {
   btnStatus = qobject_cast<QToolButton*>(pStatusBar->widgetForAction(pStatusAction));
 
   QToolBar* pToolBar = new QToolBar(ui.wgtToolBar);
-  pToolBar->setIconSize(QSize(40, 20));
+  pToolBar->setIconSize(QSize(24, 24));
   pToolBar->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
   ui.toolBarLayout->addWidget(pToolBar);
 

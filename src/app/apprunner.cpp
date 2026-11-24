@@ -9,6 +9,8 @@
 #include "core/lmccategories.h"
 #include "core/lmclogging.h"
 #include <QFile>
+#include <QGuiApplication>
+#include <QStyleHints>
 #include <QResource>
 #include <QMessageBox>
 #include <QIcon>
@@ -67,8 +69,16 @@ static void applyCustomQss(Application& application) {
   constexpr qint64 kMaxCustomQssBytes = 256 * 1024;
   const QString path = StdLocation::userThemeDir() + QStringLiteral("/custom.qss");
   QFile file(path);
-  if(!file.exists())
+  if(!file.exists()) {
+    //  No user override: apply MANARA's built-in style sheet for the system scheme.
+    const bool dark = QGuiApplication::styleHints()->colorScheme() == Qt::ColorScheme::Dark;
+    QFile builtin(dark ? QStringLiteral(":/qss/manara-dark.qss") : QStringLiteral(":/qss/manara-light.qss"));
+    if(builtin.open(QIODevice::ReadOnly | QIODevice::Text)) {
+      application.setStyleSheet(QString::fromUtf8(builtin.readAll()));
+      qCInfo(lmcApp(), "Style: built-in MANARA %s style applied", dark ? "dark" : "light");
+    }
     return;
+  }
   if(!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
     qCWarning(lmcApp(), "CustomQss: cannot read %s", qUtf8Printable(path));
     return;

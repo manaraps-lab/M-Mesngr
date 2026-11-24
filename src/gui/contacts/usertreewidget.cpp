@@ -3,6 +3,7 @@
 // Copyright (c) 2026 LAN Messenger.
 #include "usertreewidget.h"
 
+#include <QPainterPath>
 #include <QtWidgets/QApplication>
 #include <QtWidgets/QStyle>
 #include <QtWidgets/QStyleOption>
@@ -99,13 +100,18 @@ void lmcUserTreeWidgetDelegate::paint(QPainter* painter, const QStyleOptionViewI
   backgroundOpt.icon = QIcon();
   if(type == "Group")
     backgroundOpt.features.setFlag(QStyleOptionViewItem::Alternate, false);
-  style->drawPrimitive(QStyle::PE_PanelItemViewItem, &backgroundOpt, painter, widget);
+  if(type != "User" && type != "Group")
+    style->drawPrimitive(QStyle::PE_PanelItemViewItem, &backgroundOpt, painter, widget);
 
   if(type == "Group") {
-    //	Section header: neutral background from style, bold text, bottom separator.
-    if(!isSelected) {
-      painter->setPen(QPen(palette.color(group, QPalette::Mid)));
-      painter->drawLine(itemRect.left(), itemRect.bottom(), itemRect.right(), itemRect.bottom());
+    //	Section header (MANARA): no box, small muted bold label; a soft rounded
+    //	fill only when selected.
+    const bool darkGroup = palette.color(group, QPalette::Window).lightness() < 128;
+    if(isSelected) {
+      painter->setRenderHint(QPainter::Antialiasing, true);
+      painter->setPen(Qt::NoPen);
+      painter->setBrush(darkGroup ? QColor(0x16, 0x25, 0x56) : QColor(0xEA, 0xF1, 0xFD));
+      painter->drawRoundedRect(QRectF(itemRect.adjusted(6, 2, -6, -2)), 10, 10);
     }
 
     //	Draw checkbox if needed (native indicator)
@@ -116,14 +122,32 @@ void lmcUserTreeWidgetDelegate::paint(QPainter* painter, const QStyleOptionViewI
     //	Draw the expand/collapse arrow via style. Qt has no dedicated branch-width metric
     //	(SE_TreeViewDisclosureItem returns the full item rect), so use the DPI-aware
     //	indicator width which matches the checkbox alignment.
-    QStyleOptionViewItem branchOpt(option);
     int branchWidth = style->pixelMetric(QStyle::PM_IndicatorWidth, nullptr, widget);
     if(branchWidth <= 0)
       branchWidth = 12;
     QRect branchRect(checkBoxRect.right() + 4, itemRect.top(), branchWidth, itemRect.height());
-    branchOpt.rect = branchRect;
-    branchOpt.palette.setCurrentColorGroup(group);
-    style->drawPrimitive(QStyle::PE_IndicatorBranch, &branchOpt, painter, widget);
+    {
+      //  MANARA: thin chevron instead of the style's filled triangle.
+      painter->setRenderHint(QPainter::Antialiasing, true);
+      painter->setPen(QPen(darkGroup ? QColor(0xA3, 0xB1, 0xD6) : QColor(0x5B, 0x67, 0x85), 1.6, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+      painter->setBrush(Qt::NoBrush);
+      const QPointF c = QRectF(branchRect).center();
+      QPainterPath chevron;
+      if(pItem->isExpanded()) {
+        chevron.moveTo(c.x() - 3.5, c.y() - 1.5);
+        chevron.lineTo(c.x(), c.y() + 2.0);
+        chevron.lineTo(c.x() + 3.5, c.y() - 1.5);
+      } else if(option.direction == Qt::RightToLeft) {
+        chevron.moveTo(c.x() + 1.5, c.y() - 3.5);
+        chevron.lineTo(c.x() - 2.0, c.y());
+        chevron.lineTo(c.x() + 1.5, c.y() + 3.5);
+      } else {
+        chevron.moveTo(c.x() - 1.5, c.y() - 3.5);
+        chevron.lineTo(c.x() + 2.0, c.y());
+        chevron.lineTo(c.x() - 1.5, c.y() + 3.5);
+      }
+      painter->drawPath(chevron);
+    }
 
     //	Draw the text
     QFont font = painter->font();
@@ -137,72 +161,114 @@ void lmcUserTreeWidgetDelegate::paint(QPainter* painter, const QStyleOptionViewI
       maxPad = padding;
     leftPad = qBound(padding, leftPad, maxPad);
     QRect textRect = itemRect.adjusted(leftPad, padding, -5, -padding);
-    if(isSelected)
-      painter->setPen(QPen(palette.color(group, QPalette::HighlightedText)));
-    else
-      painter->setPen(QPen(palette.color(group, QPalette::WindowText)));
+    painter->setPen(QPen(darkGroup ? QColor(0xA3, 0xB1, 0xD6) : QColor(0x5B, 0x67, 0x85)));
     QString text = painter->fontMetrics().elidedText(name, Qt::ElideRight, textRect.width());
     painter->drawText(textRect, textFlags, text);
   } else if(type == "User") {
-    //	Draw checkbox if needed (native indicator)
+    //	MANARA card: rounded row, circular avatar with a status dot, name and note.
+    const bool detailed = pTreeWidget->view() == ULV_Detailed;
+    const bool dark = palette.color(group, QPalette::Window).lightness() < 128;
+    const bool hovered = option.state.testFlag(QStyle::State_MouseOver);
+    const int statusIndex = pItem->data(0, StatusRole).toInt();
+    const bool offline = (statusIndex == 5);
+    const QColor cText = palette.color(group, QPalette::WindowText);
+    const QColor cMuted = dark ? QColor(0xA3, 0xB1, 0xD6) : QColor(0x5B, 0x67, 0x85);
+    const QColor cSelBg = dark ? QColor(0x16, 0x25, 0x56) : QColor(0xEA, 0xF1, 0xFD);
+    const QColor cSelBorder = dark ? QColor(0x24, 0x31, 0x63) : QColor(0xCF, 0xE0, 0xFA);
+    const QColor cHover = dark ? QColor(0x12, 0x1E, 0x47) : QColor(0xF1, 0xF5, 0xFC);
+    const QColor cPanel = palette.color(group, QPalette::Base);
+
+    painter->setRenderHint(QPainter::Antialiasing, true);
+    painter->setRenderHint(QPainter::SmoothPixmapTransform, true);
+    const QRect card = itemRect.adjusted(6, 2, -6, -2);
+    if(isSelected || hovered) {
+      painter->setPen(isSelected ? QPen(cSelBorder, 1) : QPen(Qt::NoPen));
+      painter->setBrush(isSelected ? cSelBg : cHover);
+      painter->drawRoundedRect(QRectF(card).adjusted(0.5, 0.5, -0.5, -0.5), 12, 12);
+    }
+    if(offline)
+      painter->setOpacity(0.65);
+
+    //	Optional checkbox (user selection dialogs) keeps its native look.
     QRect checkBoxRect = pItem->checkBoxRect(itemRect);
     if(pTreeWidget->checkable())
       drawCheckBox(painter, option, group, checkBoxRect, pItem->checkState(0));
 
-    //	Draw the status image
-    QPixmap statusImage = pItem->icon(0).pixmap(QSize(16, 16));
-    int leftPad = checkBoxRect.width() > 0 ? checkBoxRect.right() + 5 : 5;
-    QRect statusRect = itemRect.adjusted(leftPad, padding, 0, 0);
-    statusRect.setSize(statusImage.size());
-    painter->drawPixmap(statusRect, statusImage);
+    const int avatarSize = detailed ? 40 : 24;
+    int x = card.left() + 8;
+    if(pTreeWidget->checkable())
+      x = checkBoxRect.right() + 8;
+    QRect avatarRect(x, card.center().y() - avatarSize / 2 + 1, avatarSize, avatarSize);
+    avatarRect = QStyle::visualRect(option.direction, card, avatarRect);
 
-    //	Draw the avatar image
-    QRect avatarRect = itemRect.adjusted(itemRect.width(), padding, 0, 0);
-    if(pTreeWidget->view() == ULV_Detailed) {
+    //	Avatar clipped to a circle; users without a picture get a brand-coloured initial.
+    {
+      painter->save();
+      QPainterPath clip;
+      clip.addEllipse(avatarRect);
+      painter->setClipPath(clip);
       QVariant avatar = pItem->data(0, AvatarRole);
       if(!avatar.isNull()) {
-        QPixmap avatarImage = ((QIcon)pItem->data(0, AvatarRole).value<QIcon>()).pixmap(32, 32);
-        avatarRect.setLeft(avatarRect.right() - avatarImage.width() - padding);
-        avatarRect.setSize(avatarImage.size());
-        painter->drawPixmap(avatarRect, avatarImage);
+        QPixmap pm = avatar.value<QIcon>().pixmap(QSize(avatarSize, avatarSize));
+        painter->drawPixmap(avatarRect, pm);
+      } else {
+        painter->fillRect(avatarRect, QColor(0x1E, 0x4F, 0xC2));
+        painter->setPen(Qt::white);
+        QFont f = painter->font();
+        f.setBold(true);
+        f.setPixelSize(avatarSize / 2);
+        painter->setFont(f);
+        painter->drawText(avatarRect, Qt::AlignCenter, name.left(1).toUpper());
       }
+      painter->restore();
     }
 
-    //	Draw the text
-    if(isSelected)
-      painter->setPen(QPen(palette.color(group, QPalette::HighlightedText)));
-    else
-      painter->setPen(QPen(palette.color(group, QPalette::WindowText)));
-    int textFlags = Qt::AlignLeft;
-    textFlags |= (pTreeWidget->view() == ULV_Detailed ? Qt::AlignTop : Qt::AlignVCenter);
-    //	Leave a padding of 5px on left and right; clamp so a narrow viewport can never hide the name.
-    int rightReserve = 5 + avatarRect.width() + padding;
-    int textLeft = statusRect.right() + 5 - itemRect.left();
-    int maxLeft = itemRect.width() - 5 - rightReserve - 24;
-    if(maxLeft < padding)
-      maxLeft = padding;
-    textLeft = qBound(padding, textLeft, maxLeft);
-    QRect textRect = itemRect.adjusted(textLeft, padding, -rightReserve, -padding);
-    QString text = painter->fontMetrics().elidedText(name, Qt::ElideRight, textRect.width());
-    painter->drawText(textRect, textFlags, text);
+    //	Status dot on the avatar corner, ringed with the panel colour.
+    {
+      QPixmap statusImage = pItem->icon(0).pixmap(QSize(16, 16));
+      const int dot = detailed ? 13 : 10;
+      QRect dotRect(0, 0, dot, dot);
+      dotRect.moveBottomRight(QPoint(avatarRect.right() + (detailed ? 2 : 1), avatarRect.bottom() + (detailed ? 2 : 1)));
+      if(option.direction == Qt::RightToLeft)
+        dotRect.moveBottomLeft(QPoint(avatarRect.left() - (detailed ? 2 : 1), avatarRect.bottom() + (detailed ? 2 : 1)));
+      painter->setPen(Qt::NoPen);
+      painter->setBrush(isSelected ? cSelBg : (hovered ? cHover : cPanel));
+      painter->drawEllipse(dotRect.adjusted(-2, -2, 2, 2));
+      if(!statusImage.isNull())
+        painter->drawPixmap(dotRect, statusImage);
+    }
 
-    //	Draw sub text
-    if(pTreeWidget->view() == ULV_Detailed) {
-      QVariant note = pItem->data(0, SubtextRole);
-      if(!note.isNull()) {
-        QString userNote = note.toString();
-        if(isSelected)
-          painter->setPen(QPen(palette.color(group, QPalette::HighlightedText)));
-        else
-          painter->setPen(QPen(palette.color(group, QPalette::PlaceholderText)));
-        textFlags = Qt::AlignLeft | Qt::AlignBottom;
-        text = painter->fontMetrics().elidedText(userNote, Qt::ElideRight, textRect.width());
-        painter->drawText(textRect, textFlags, text);
-      }
+    //	Text block beside the avatar.
+    const int textGap = 12;
+    QRect textRect;
+    if(option.direction == Qt::RightToLeft)
+      textRect = QRect(card.left() + 8, card.top(), avatarRect.left() - textGap - card.left() - 8, card.height());
+    else
+      textRect = QRect(avatarRect.right() + textGap, card.top(), card.right() - avatarRect.right() - textGap - 8, card.height());
+    const int align = (option.direction == Qt::RightToLeft ? Qt::AlignRight : Qt::AlignLeft);
+
+    QFont nameFont = painter->font();
+    nameFont.setBold(true);
+    painter->setFont(nameFont);
+    painter->setPen(cText);
+    QString note = detailed ? pItem->data(0, SubtextRole).toString().trimmed() : QString();
+    if(note.isEmpty()) {
+      painter->drawText(textRect, align | Qt::AlignVCenter, painter->fontMetrics().elidedText(name, Qt::ElideRight, textRect.width()));
+    } else {
+      QRect top(textRect.left(), textRect.top() + 6, textRect.width(), textRect.height() / 2 - 4);
+      QRect bottom(textRect.left(), textRect.center().y() + 1, textRect.width(), textRect.height() / 2 - 6);
+      painter->drawText(top, align | Qt::AlignBottom, painter->fontMetrics().elidedText(name, Qt::ElideRight, top.width()));
+      QFont noteFont = painter->font();
+      noteFont.setBold(false);
+      noteFont.setPointSizeF(qMax(7.0, noteFont.pointSizeF() - 1.0));
+      painter->setFont(noteFont);
+      painter->setPen(cMuted);
+      painter->drawText(bottom, align | Qt::AlignTop, painter->fontMetrics().elidedText(note, Qt::ElideRight, bottom.width()));
     }
   }
 
-  if(option.state.testFlag(QStyle::State_HasFocus)) {
+  //  Rows draw their own selection; the native focus frame would box them in.
+  if(false && option.state.testFlag(QStyle::State_HasFocus)) {
     QStyleOptionFocusRect focusOpt;
     focusOpt.rect = itemRect;
     focusOpt.state = option.state;
@@ -261,6 +327,25 @@ void lmcUserTreeWidget::setCheckable(bool enable) {
 
 UserListView lmcUserTreeWidget::view(void) {
   return viewType;
+}
+
+void lmcUserTreeWidget::drawRow(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index) const {
+  QStyleOptionViewItem opt(option);
+  opt.rect = visualRect(index);
+  //  QTreeView computes these per row internally; rebuild them for the delegate.
+  if(selectionModel() && selectionModel()->isSelected(index))
+    opt.state |= QStyle::State_Selected;
+  if(index == currentIndex() && hasFocus())
+    opt.state |= QStyle::State_HasFocus;
+  if(window() && window()->isActiveWindow())
+    opt.state |= QStyle::State_Active;
+  if(underMouse() && indexAt(viewport()->mapFromGlobal(QCursor::pos())) == index)
+    opt.state |= QStyle::State_MouseOver;
+  QAbstractItemDelegate* d = QTreeWidget::itemDelegate();
+  if(d)
+    d->paint(painter, opt, index);
+  else
+    QTreeWidget::drawRow(painter, option, index);
 }
 
 void lmcUserTreeWidget::setView(UserListView view) {
