@@ -1159,6 +1159,42 @@ File may not exist, or may not be compatible with this version of %2.</source>
 <context>
     <name>lmcMainWindow</name>
     <message>
+        <source>Chat</source>
+        <translation>محادثة</translation>
+    </message>
+    <message>
+        <source>Files</source>
+        <translation>ملفات</translation>
+    </message>
+    <message>
+        <source>Broadcast</source>
+        <translation>بث</translation>
+    </message>
+    <message>
+        <source>New room</source>
+        <translation>غرفة جديدة</translation>
+    </message>
+    <message>
+        <source>Public</source>
+        <translation>عامة</translation>
+    </message>
+    <message>
+        <source>Menu</source>
+        <translation>القائمة</translation>
+    </message>
+    <message>
+        <source>Search people...</source>
+        <translation>ابحث عن شخص...</translation>
+    </message>
+    <message>
+        <source>No one is online yet</source>
+        <translation>لا أحد متصل حاليًا</translation>
+    </message>
+    <message>
+        <source>People on your network appear here automatically.</source>
+        <translation>سيظهر المتصلون على شبكتك هنا تلقائيًا.</translation>
+    </message>
+    <message>
         <source>%1 is online.</source>
         <translation>%1 متصل.</translation>
     </message>
