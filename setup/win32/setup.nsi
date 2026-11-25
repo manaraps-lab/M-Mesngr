@@ -25,7 +25,7 @@ SetCompressor /SOLID lzma
   !ifndef InstallerVersion
     !error "InstallerVersion is required (pass /DInstallerVersion=... via setup.ps1)"
   !endif
-  !define ProductUrl "http://lanmessenger.github.io"
+  !define ProductUrl "https://github.com/manaraps-lab/M-Mesngr"
   !define CompanyRegKey "SOFTWARE\${CompanyName}"
   !define AppRegKey "${CompanyRegKey}\${ProductName}"
   !define UninstKey "SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\${ProductName}"
@@ -82,7 +82,7 @@ SetCompressor /SOLID lzma
   !insertmacro MUI_PAGE_INSTFILES
   !define MUI_FINISHPAGE_TITLE_3LINES
   !define MUI_FINISHPAGE_RUN "$INSTDIR\${AppExec}"
-  !define MUI_FINISHPAGE_RUN_TEXT "Start ${ProductName}"
+  !define MUI_FINISHPAGE_RUN_TEXT "تشغيل ${ProductName}"
   !define MUI_PAGE_CUSTOMFUNCTION_SHOW FinishPageShow
   !insertmacro MUI_PAGE_FINISH
 
@@ -100,18 +100,18 @@ SetCompressor /SOLID lzma
 
   ;Define Uninstall confirmation constant for fetching strings from language file.
   !insertmacro MUI_SET MUI_UNCONFIRMPAGE ""
-  !insertmacro MUI_LANGUAGE "English"
+  !insertmacro MUI_LANGUAGE "Arabic"
 
 
 ;------------------------------------------------------------------------------
 ;Version Information
 
   VIProductVersion "${InstallerVersion}"
-  VIAddVersionKey /LANG=${LANG_ENGLISH} "ProductName" "${ProductName}"
-  VIAddVersionKey /LANG=${LANG_ENGLISH} "CompanyName" "${CompanyName}"
-  VIAddVersionKey /LANG=${LANG_ENGLISH} "LegalCopyright" "Copyright (c) 2010-2011 Dilip Radhakrishnan."
-  VIAddVersionKey /LANG=${LANG_ENGLISH} "FileDescription" "${ProductName} Installer"
-  VIAddVersionKey /LANG=${LANG_ENGLISH} "FileVersion" "${ProductVersion}"
+  VIAddVersionKey /LANG=${LANG_ARABIC} "ProductName" "${ProductName}"
+  VIAddVersionKey /LANG=${LANG_ARABIC} "CompanyName" "${CompanyName}"
+  VIAddVersionKey /LANG=${LANG_ARABIC} "LegalCopyright" "Copyright (c) 2026 MANARA Messenger. Based on LAN Messenger (GPL-3.0)."
+  VIAddVersionKey /LANG=${LANG_ARABIC} "FileDescription" "${ProductName} Installer"
+  VIAddVersionKey /LANG=${LANG_ARABIC} "FileVersion" "${ProductVersion}"
 
 
 ;------------------------------------------------------------------------------
