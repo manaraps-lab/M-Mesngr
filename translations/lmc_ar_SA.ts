@@ -624,11 +624,11 @@
     </message>
     <message>
         <source>UDP Port*:</source>
-        <translation></translation>
+        <translation>منفذ UDP*:</translation>
     </message>
     <message>
         <source>TCP Port*:</source>
-        <translation></translation>
+        <translation>منفذ TCP*:</translation>
     </message>
     <message>
         <source>* Takes effect after you restart %1.</source>
@@ -773,7 +773,7 @@
     </message>
     <message>
         <source>N/A</source>
-        <translation></translation>
+        <translation>غير متاح</translation>
     </message>
     <message>
         <source>Last Name:</source>
@@ -1582,6 +1582,10 @@ File may not exist, or may not be compatible with this version of %2.</source>
 </context>
 <context>
     <name>lmcUpdateWindow</name>
+    <message>
+        <source>Automatic update checking is not available yet. Get new versions from the project releases page.</source>
+        <translation>فحص التحديثات التلقائي غير متاح بعد. احصل على الإصدارات الجديدة من صفحة إصدارات المشروع.</translation>
+    </message>
     <message>
         <source>%1 updates</source>
         <translation>%1 تحديثات</translation>
