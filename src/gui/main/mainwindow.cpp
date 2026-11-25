@@ -717,6 +717,8 @@ void lmcMainWindow::txtNote_lostFocus(void) {
 void lmcMainWindow::createBrandBar(void) {
   QWidget* bar = new QWidget(this);
   bar->setObjectName("brandBar");
+  // The brand lockup always reads "MANARA Messenger" left to right, in any UI language.
+  bar->setLayoutDirection(Qt::LeftToRight);
   QHBoxLayout* row = new QHBoxLayout(bar);
   row->setContentsMargins(4, 2, 4, 2);
   row->setSpacing(8);
@@ -853,6 +855,7 @@ void lmcMainWindow::createMainMenu(void) {
                                             QIcon(QPixmap(IDR_WEB, "PNG")));
   updateAction = ActionHelper::createAction(pHelpMenu, "Check for &Updates", this,
                                             &lmcMainWindow::updateAction_triggered);
+  updateAction->setVisible(false);  // no update server for this product (see updatewindow.cpp)
   aboutAction = ActionHelper::createAction(pHelpMenu, "&About", this, &lmcMainWindow::trayAboutAction_triggered,
                                            QIcon(QPixmap(IDR_INFO, "PNG")));
 

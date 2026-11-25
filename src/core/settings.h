@@ -29,7 +29,7 @@
 #define IDS_AUTOSTART "AutoStart"
 #define IDS_AUTOSTART_VAL true
 #define IDS_AUTOSHOW "AutoShow"
-#define IDS_AUTOSHOW_VAL false
+#define IDS_AUTOSHOW_VAL true
 #define IDS_LANGUAGE "Locale/Language"
 #define IDS_LANGUAGE_VAL "en_US"
 // Language used on first run, before the user picks one.
