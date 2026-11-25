@@ -87,3 +87,9 @@ QToolButton#btnMainMenu::menu-indicator { image: none; }
 QWidget#chatHeader { background: #FFFFFF; border-bottom: 1px solid #E3E8F1; }
 QLabel#chatHeaderName { color: #0F1A3A; font-size: 12pt; font-weight: 700; }
 QLabel#chatHeaderNote { color: #6B7794; font-size: 9pt; }
+
+/* ---- first-run welcome ---- */
+QLabel#welcomeTitle { color: #0F1A3A; font-size: 15pt; font-weight: 800; }
+QLabel#welcomeNotes { color: #6B7794; font-size: 9pt; }
+QPushButton#btnWelcomeStart { background: #1E4FC2; color: #FFFFFF; border: none; border-radius: 12px; padding: 9px 18px; font-weight: 700; }
+QPushButton#btnWelcomeStart:hover { background: #F28C28; }

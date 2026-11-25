@@ -236,6 +236,10 @@
 <context>
     <name>FileView</name>
     <message>
+        <source>%1 left - %2 of %3 (%4)</source>
+        <translation>المتبقي %1 - %2 من %3 (%4)</translation>
+    </message>
+    <message>
         <source>0 bytes</source>
         <translation>0 بايت</translation>
     </message>
@@ -1145,8 +1149,8 @@ File may not exist, or may not be compatible with this version of %2.</source>
         <translation>مساعدة</translation>
     </message>
     <message>
-        <source>&lt;html&gt;&lt;head&gt;&lt;meta http-equiv=&apos;Content-Type&apos; content=&apos;text/html; charset=utf-8&apos; /&gt;&lt;/head&gt;&lt;body&gt;&lt;h2&gt;Welcome to MANARA Messenger Help&lt;/h2&gt;&lt;h3&gt;Documentation&lt;/h3&gt;&lt;p&gt;You can find guides and references in the &lt;a href=&apos;%1&apos;&gt;documentation&lt;/a&gt;.&lt;/p&gt;&lt;p&gt;No peers in the list? Check the &lt;a href=&apos;%2&apos;&gt;network notes for your system&lt;/a&gt;.&lt;/p&gt;&lt;h3&gt;Report a problem&lt;/h3&gt;&lt;p&gt;Found a bug on your subnet? Please &lt;a href=&apos;%3&apos;&gt;open an issue&lt;/a&gt; and include your operating system, app version, and network setup.&lt;/p&gt;&lt;h3&gt;Contribute to the project&lt;/h3&gt;&lt;p&gt;You can help MANARA Messenger by testing it, translating it, and reporting what you find.&lt;/p&gt;&lt;p&gt;MANARA Messenger is free software based on LAN Messenger. Source code: &lt;a href=&apos;%4&apos;&gt;project page&lt;/a&gt;.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head&gt;&lt;meta http-equiv=&apos;Content-Type&apos; content=&apos;text/html; charset=utf-8&apos; /&gt;&lt;/head&gt;&lt;body dir=&apos;rtl&apos;&gt;&lt;h2&gt;مرحبًا بك في مساعدة MANARA Messenger&lt;/h2&gt;&lt;h3&gt;التوثيق&lt;/h3&gt;&lt;p&gt;تجد الأدلة والمراجع في &lt;a href=&apos;%1&apos;&gt;صفحة التوثيق&lt;/a&gt;.&lt;/p&gt;&lt;p&gt;لا يظهر أحد في القائمة؟ راجع &lt;a href=&apos;%2&apos;&gt;ملاحظات الشبكة لنظامك&lt;/a&gt;.&lt;/p&gt;&lt;h3&gt;الإبلاغ عن مشكلة&lt;/h3&gt;&lt;p&gt;وجدت خللًا على شبكتك؟ يرجى &lt;a href=&apos;%3&apos;&gt;فتح بلاغ&lt;/a&gt; مع ذكر نظام التشغيل وإصدار البرنامج وإعدادات الشبكة.&lt;/p&gt;&lt;h3&gt;المساهمة في المشروع&lt;/h3&gt;&lt;p&gt;يمكنك مساعدة MANARA Messenger بتجربته وترجمته والإبلاغ عمّا تجده.&lt;/p&gt;&lt;p&gt;MANARA Messenger برنامج حر مبني على LAN Messenger. الشيفرة المصدرية: &lt;a href=&apos;%4&apos;&gt;صفحة المشروع&lt;/a&gt;.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <source>&lt;html&gt;&lt;head&gt;&lt;meta http-equiv=&apos;Content-Type&apos; content=&apos;text/html; charset=utf-8&apos; /&gt;&lt;/head&gt;&lt;body&gt;&lt;h2&gt;Welcome to MANARA Messenger Help&lt;/h2&gt;&lt;h3&gt;Documentation&lt;/h3&gt;&lt;p&gt;You can find guides and references in the &lt;a href=&apos;%1&apos;&gt;documentation&lt;/a&gt;.&lt;/p&gt;&lt;p&gt;No peers in the list? Check the &lt;a href=&apos;%2&apos;&gt;network notes for your system&lt;/a&gt;.&lt;/p&gt;&lt;h3&gt;Report a problem&lt;/h3&gt;&lt;p&gt;Found a bug on your subnet? Please &lt;a href=&apos;%3&apos;&gt;open an issue&lt;/a&gt; and include your operating system, app version, and network setup.&lt;/p&gt;&lt;h3&gt;Security notes&lt;/h3&gt;&lt;p&gt;Messages are encrypted. File contents are checked with SHA-256 so corruption is detected, but they are &lt;b&gt;not encrypted&lt;/b&gt;, and the check does not stop someone who can alter traffic on your network. Use MANARA only on networks you trust, and accept files only from people you know.&lt;/p&gt;&lt;h3&gt;Contribute to the project&lt;/h3&gt;&lt;p&gt;You can help MANARA Messenger by testing it, translating it, and reporting what you find.&lt;/p&gt;&lt;p&gt;MANARA Messenger is free software based on LAN Messenger. Source code: &lt;a href=&apos;%4&apos;&gt;project page&lt;/a&gt;.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
+        <translation>&lt;html&gt;&lt;head&gt;&lt;meta http-equiv=&apos;Content-Type&apos; content=&apos;text/html; charset=utf-8&apos; /&gt;&lt;/head&gt;&lt;body dir=&apos;rtl&apos;&gt;&lt;h2&gt;مرحبًا بك في مساعدة MANARA Messenger&lt;/h2&gt;&lt;h3&gt;التوثيق&lt;/h3&gt;&lt;p&gt;تجد الأدلة والمراجع في &lt;a href=&apos;%1&apos;&gt;صفحة التوثيق&lt;/a&gt;.&lt;/p&gt;&lt;p&gt;لا يظهر أحد في القائمة؟ راجع &lt;a href=&apos;%2&apos;&gt;ملاحظات الشبكة لنظامك&lt;/a&gt;.&lt;/p&gt;&lt;h3&gt;الإبلاغ عن مشكلة&lt;/h3&gt;&lt;p&gt;وجدت خللًا على شبكتك؟ يرجى &lt;a href=&apos;%3&apos;&gt;فتح بلاغ&lt;/a&gt; مع ذكر نظام التشغيل وإصدار البرنامج وإعدادات الشبكة.&lt;/p&gt;&lt;h3&gt;ملاحظات الأمان&lt;/h3&gt;&lt;p&gt;الرسائل مشفّرة. أما محتوى الملفات فيُفحص بـ SHA-256 لاكتشاف التلف، لكنه &lt;b&gt;غير مشفّر&lt;/b&gt;، ولا يمنع هذا الفحص من يستطيع العبث بالحركة على شبكتك. استخدم MANARA على شبكات تثق بها فقط، ولا تقبل ملفات إلا من أشخاص تعرفهم.&lt;/p&gt;&lt;h3&gt;المساهمة في المشروع&lt;/h3&gt;&lt;p&gt;يمكنك مساعدة MANARA Messenger بتجربته وترجمته والإبلاغ عمّا تجده.&lt;/p&gt;&lt;p&gt;MANARA Messenger برنامج حر مبني على LAN Messenger. الشيفرة المصدرية: &lt;a href=&apos;%4&apos;&gt;صفحة المشروع&lt;/a&gt;.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
 </context>
 <context>
@@ -1620,5 +1624,12 @@ File may not exist, or may not be compatible with this version of %2.</source>
         <source>Select Contacts</source>
         <translation>اختيار الاتصالات</translation>
     </message>
+</context>
+<context>
+    <name>WelcomeDialog</name>
+    <message><source>Welcome to MANARA Messenger</source><translation>مرحبًا بك في MANARA Messenger</translation></message>
+    <message><source>What name should people see?</source><translation>ما الاسم الذي تريد أن يراه الآخرون؟</translation></message>
+    <message><source>People on your private network appear automatically. File contents are checked for integrity (SHA-256) but are not encrypted, so use MANARA only on networks you trust.</source><translation>يظهر الأشخاص على شبكتك الخاصة تلقائيًا. يُفحص محتوى الملفات بـ SHA-256 لاكتشاف التلف لكنه غير مشفّر، لذا استخدم MANARA على شبكات تثق بها فقط.</translation></message>
+    <message><source>Start</source><translation>ابدأ</translation></message>
 </context>
 </TS>

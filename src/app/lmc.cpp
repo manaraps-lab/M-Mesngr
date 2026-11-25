@@ -11,6 +11,14 @@
 #include <QThread>
 #include <QSysInfo>
 #include <QFile>
+#include <QDialog>
+#include <QVBoxLayout>
+#include <QHBoxLayout>
+#include <QLabel>
+#include <QLineEdit>
+#include <QPushButton>
+#include <QIcon>
+#include <QGuiApplication>
 #include <cstdio>
 #include "core/lmccategories.h"
 #include "core/shared.h"
@@ -120,6 +128,70 @@ bool openHistory(HistoryStore& store) {
 
 } // namespace
 
+// First run only: pick the display name and read the two things that matter.
+// Skipped on the offscreen platform so automated runs never block here.
+// Returns the chosen name when it differs from the system one, otherwise an empty string.
+static QString showWelcomeIfFirstRun(lmcSettings* pSettings) {
+  const QString welcomed = "Application/Welcomed";
+  if((QGuiApplication::platformName() == "offscreen" && !qEnvironmentVariableIsSet("LMC_SHOW_WELCOME")) || pSettings->value(welcomed, false).toBool() ||
+     !pSettings->value(IDS_USERNAME, IDS_USERNAME_VAL).toString().isEmpty())
+    return QString();
+
+  auto T = [](const char* s) { return QCoreApplication::translate("WelcomeDialog", s); };
+  QDialog dlg;
+  dlg.setObjectName("WelcomeDialog");
+  dlg.setWindowTitle(T("Welcome to MANARA Messenger"));
+  dlg.setMinimumWidth(420);
+  QVBoxLayout* col = new QVBoxLayout(&dlg);
+  col->setContentsMargins(28, 24, 28, 22);
+  col->setSpacing(12);
+
+  QLabel* logo = new QLabel(&dlg);
+  logo->setPixmap(QIcon(IDR_APPICON).pixmap(QSize(64, 64)));
+  logo->setAlignment(Qt::AlignCenter);
+  QLabel* title = new QLabel(T("Welcome to MANARA Messenger"), &dlg);
+  title->setObjectName("welcomeTitle");
+  title->setAlignment(Qt::AlignCenter);
+  QLabel* ask = new QLabel(T("What name should people see?"), &dlg);
+  QLineEdit* name = new QLineEdit(Helper::getLogonName(), &dlg);
+  name->setObjectName("txtWelcomeName");
+  name->selectAll();
+  QLabel* notes = new QLabel(
+      T("People on your private network appear automatically. File contents are checked for integrity "
+        "(SHA-256) but are not encrypted, so use MANARA only on networks you trust."),
+      &dlg);
+  notes->setObjectName("welcomeNotes");
+  notes->setWordWrap(true);
+  QPushButton* go = new QPushButton(T("Start"), &dlg);
+  go->setObjectName("btnWelcomeStart");
+  go->setDefault(true);
+  QObject::connect(go, &QPushButton::clicked, &dlg, &QDialog::accept);
+
+  col->addWidget(logo);
+  col->addWidget(title);
+  col->addSpacing(6);
+  col->addWidget(ask);
+  col->addWidget(name);
+  col->addWidget(notes);
+  col->addSpacing(4);
+  col->addWidget(go);
+
+  if(qEnvironmentVariableIsSet("LMC_WELCOME_SHOT")) {  // test hook: save a picture of the dialog and continue
+    QTimer::singleShot(600, &dlg, [&dlg]() {
+      dlg.grab().save(qEnvironmentVariable("LMC_WELCOME_SHOT"));
+      dlg.accept();
+    });
+  }
+  dlg.exec();
+  const QString chosen = name->text().trimmed();
+  pSettings->setValue(welcomed, true);
+  if(!chosen.isEmpty() && chosen != Helper::getLogonName()) {
+    pSettings->setValue(IDS_USERNAME, chosen, IDS_USERNAME_VAL);
+    return chosen;
+  }
+  return QString();
+}
+
 void lmcCore::init(const QString& szCommandArgs) {
   //	prevent auto app exit when last visible window is closed
   qApp->setQuitOnLastWindowClosed(false);
@@ -161,6 +233,13 @@ void lmcCore::init(const QString& szCommandArgs) {
 
 bool lmcCore::start(void) {
   qCInfo(lmcApp(), "Application started");
+  // Shown only now: every window is initialised, so the event loop inside the
+  // dialog can safely deliver pending events (language change) to them.
+  const QString welcomeName = showWelcomeIfFirstRun(pSettings);
+  if(!welcomeName.isEmpty()) {
+    pMessaging->localUser->name = welcomeName;
+    pMainWindow->settingsChanged();
+  }
   pMessaging->start();
 
   if(pMessaging->isConnected() && !pMessaging->canReceive()) {

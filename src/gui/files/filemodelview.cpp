@@ -15,6 +15,7 @@
 #include <math.h>
 
 #include "filemodelview.h"
+#include <QGuiApplication>
 #include "core/definitions.h"
 
 /****************************************************************************
@@ -41,95 +42,118 @@ QSize FileView::sizeHint() const {
   case TS_Confirm:
   case TS_Complete:
   case TS_Cancel:
-    return QSize(0, 56);
+    return QSize(0, 78);
     break;
   default:
-    return QSize(0, 56);
+    return QSize(0, 86);
     break;
   }
 }
 
 void FileView::paint(QPainter* painter, const QRect& rect, const QPalette& palette, DisplayMode displayMode) const {
+  Q_UNUSED(displayMode);
   painter->save();
   painter->setRenderHint(QPainter::Antialiasing, true);
-
+  painter->setRenderHint(QPainter::TextAntialiasing, true);
   painter->translate(rect.x(), rect.y());
 
-  if(displayMode == DM_Selected)
-    painter->setBrush(palette.highlightedText());
-  else
-    painter->setBrush(palette.windowText());
+  const bool rtl = QGuiApplication::isRightToLeft();
+  const int W = rect.width();
+  // Maps a left-to-right x/width pair to the mirrored position in RTL.
+  auto X = [&](int x, int w) { return rtl ? W - x - w : x; };
+  const int textFlags = Qt::AlignAbsolute | (rtl ? Qt::AlignRight : Qt::AlignLeft) | Qt::AlignVCenter;
 
-  painter->setPen(QPen(painter->brush(), 1));
+  const QColor accent(30, 79, 194);
+  const QColor ok(30, 150, 90);
+  const QColor bad(205, 70, 60);
+  const QColor textColor = palette.color(QPalette::WindowText);
+  QColor muted = textColor;
+  muted.setAlpha(150);
+  const QColor track = palette.color(QPalette::Mid);
 
-  int textFlags = Qt::AlignLeft | Qt::AlignVCenter;
+  // Card
+  const QRect card(8, 5, W - 16, rect.height() - 10);
+  QColor fill = palette.color(QPalette::Base);
+  QColor edge = track;
+  edge.setAlpha(120);
+  painter->setPen(QPen(edge, 1));
+  painter->setBrush(fill);
+  painter->drawRoundedRect(QRectF(X(card.x(), card.width()) + 0.5, card.y() + 0.5, card.width() - 1, card.height() - 1), 10, 10);
 
+  // Icon tile
+  const QRect tile(X(20, 44), 15, 44, 44);
+  QColor tint = accent;
+  tint.setAlpha(30);
+  painter->setPen(Qt::NoPen);
+  painter->setBrush(tint);
+  painter->drawRoundedRect(tile, 10, 10);
+  painter->drawPixmap(QRect(tile.x() + 6, tile.y() + 6, 32, 32), icon);
+
+  const int textX = 76;
+  const int textW = W - textX - 24;
   QFont font(painter->font());
   font.setBold(true);
   painter->setFont(font);
-
+  painter->setPen(textColor);
   QString nameDisplay = (mode == TM_Send) ? tr("To: ") : tr("From: ");
   nameDisplay.append(userName);
-  QRect textRect = QRect(54, 0, rect.width() - 58, 18);
-  QString text = painter->fontMetrics().elidedText(nameDisplay, Qt::ElideRight, textRect.width());
-  painter->drawText(textRect, textFlags, text);
+  QRect textRect(X(textX, textW), 10, textW, 20);
+  painter->drawText(textRect, textFlags, painter->fontMetrics().elidedText(nameDisplay, Qt::ElideRight, textW));
 
   font.setBold(false);
   painter->setFont(font);
-  textRect = QRect(54, 18, rect.width() - 58, 18);
-  text = painter->fontMetrics().elidedText(fileDisplay, Qt::ElideMiddle, textRect.width());
-  painter->drawText(textRect, textFlags, text);
+  painter->setPen(muted);
+  textRect = QRect(X(textX, textW), 30, textW, 18);
+  painter->drawText(textRect, textFlags, painter->fontMetrics().elidedText(fileDisplay, Qt::ElideMiddle, textW));
 
   bool drawProgress = false;
   QString stateDisplay;
+  QColor stateColor = muted;
   switch(state) {
   case TS_Send:
-    stateDisplay = timeDisplay + " left - " + posDisplay + " of " + sizeDisplay + " (" + speedDisplay + ")";
-    drawProgress = true;
-    break;
   case TS_Receive:
-    stateDisplay = timeDisplay + " left - " + posDisplay + " of " + sizeDisplay + " (" + speedDisplay + ")";
+    stateDisplay = tr("%1 left - %2 of %3 (%4)").arg(timeDisplay, posDisplay, sizeDisplay, speedDisplay);
     drawProgress = true;
     break;
   case TS_Complete:
     stateDisplay = tr("Completed");
+    stateColor = ok;
     break;
   case TS_Cancel:
     stateDisplay = tr("Canceled");
+    stateColor = bad;
     break;
   case TS_Abort:
     stateDisplay = tr("Interrupted");
+    stateColor = bad;
     break;
   default:
     break;
   }
-  textRect = QRect(54, 36, rect.width() - 58, 18);
-  text = painter->fontMetrics().elidedText(stateDisplay, Qt::ElideRight, textRect.width());
-  painter->drawText(textRect, textFlags, text);
 
   if(drawProgress) {
-    int spanAngle = 0;
-    if(fileSize > 0)
-      spanAngle = ((double)position / (double)fileSize) * 360;
-
-    painter->setBrush(QBrush(QColor(230, 230, 230)));
-    painter->setPen(QPen(QColor(230, 230, 230)));
-    painter->drawPie(4, 4, 46, 46, (90 - spanAngle) * 16, -(360 - spanAngle) * 16);
-
-    painter->setBrush(QBrush(QColor(150, 225, 110)));
-    painter->setPen(QPen(QColor(150, 225, 110)));
-    painter->drawPie(4, 4, 46, 46, 90 * 16, -spanAngle * 16);
-
-    painter->setBrush(QBrush(QColor(255, 255, 255)));
-    painter->setPen(QPen(QColor(255, 255, 255), 2));
-    painter->drawLine(27, 5, 27, 49);
-    painter->drawLine(5, 27, 49, 27);
-    painter->drawLine(11, 11, 42, 42);
-    painter->drawLine(42, 11, 11, 42);
+    const double frac = fileSize > 0 ? qBound(0.0, (double)position / (double)fileSize, 1.0) : 0.0;
+    const QRect bar(X(textX, textW), 52, textW, 6);
+    painter->setPen(Qt::NoPen);
+    painter->setBrush(track);
+    painter->drawRoundedRect(bar, 3, 3);
+    const int fw = qRound(bar.width() * frac);
+    if(fw > 0) {
+      painter->setBrush(accent);
+      painter->drawRoundedRect(QRect(rtl ? bar.right() + 1 - fw : bar.x(), bar.y(), fw, bar.height()), 3, 3);
+    }
+    painter->setPen(accent);
+    QFont pf = painter->font();
+    pf.setBold(true);
+    painter->setFont(pf);
+    const QString pct = QString::number(qRound(frac * 100)) + "%";
+    painter->drawText(QRect(X(textX, textW), 10, textW, 20), Qt::AlignAbsolute | (rtl ? Qt::AlignLeft : Qt::AlignRight) | Qt::AlignVCenter, pct);
+    painter->setFont(font);
   }
 
-  QRect imageRect(11, 11, 32, 32);
-  painter->drawPixmap(imageRect, icon);
+  painter->setPen(stateColor);
+  textRect = QRect(X(textX, textW), drawProgress ? 60 : 50, textW, 18);
+  painter->drawText(textRect, textFlags, painter->fontMetrics().elidedText(stateDisplay, Qt::ElideRight, textW));
 
   painter->restore();
 }
@@ -181,15 +205,18 @@ void FileDelegate::paint(QPainter* painter, const QStyleOptionViewItem& option, 
     FileView fileView = index.data().value<FileView>();
 
     FileView::DisplayMode mode = FileView::DM_Normal;
-    if(option.state & QStyle::State_Selected) {
-      painter->fillRect(option.rect, option.palette.highlight());
+    if(option.state & QStyle::State_Selected)
       mode = FileView::DM_Selected;
-    } else {
-      if(index.row() % 2 == 1)
-        painter->fillRect(option.rect, option.palette.alternateBase());
-    }
 
     fileView.paint(painter, option.rect, option.palette, mode);
+    if(mode == FileView::DM_Selected) {
+      painter->save();
+      painter->setRenderHint(QPainter::Antialiasing, true);
+      painter->setPen(QPen(QColor(30, 79, 194), 2));
+      painter->setBrush(Qt::NoBrush);
+      painter->drawRoundedRect(QRectF(option.rect.adjusted(8, 5, -8, -5)).adjusted(1, 1, -1, -1), 10, 10);
+      painter->restore();
+    }
   } else {
     QStyledItemDelegate::paint(painter, option, index);
   }
