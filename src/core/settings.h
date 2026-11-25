@@ -32,6 +32,8 @@
 #define IDS_AUTOSHOW_VAL false
 #define IDS_LANGUAGE "Locale/Language"
 #define IDS_LANGUAGE_VAL "en_US"
+// Language used on first run, before the user picks one.
+#define IDS_LANGUAGE_DEFAULT "ar_SA"
 #define IDS_SYSTRAY "SystemTray/SysTray"
 #define IDS_SYSTRAY_VAL true
 #define IDS_MINIMIZETRAY "SystemTray/MinimizeTray"

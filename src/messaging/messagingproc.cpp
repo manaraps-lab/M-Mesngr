@@ -73,8 +73,7 @@ void lmcMessaging::sendWebMessage(MessageType type, XmlMessage* pMessage) {
 
   switch(type) {
   case MT_Version:
-    szUrl = QString(IDA_DOMAIN "/version");
-    pNetwork->sendWebMessage(&szUrl, NULL);
+    // No update server for this product: nothing is sent.
     break;
   default:
     break;

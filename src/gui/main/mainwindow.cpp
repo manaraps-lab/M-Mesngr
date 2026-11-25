@@ -980,16 +980,10 @@ void lmcMainWindow::createToolBar(void) {
                                               QIcon(QPixmap(IDR_FILE, "PNG")));
   toolFileAction->setIconText(tr("Files"));
   toolFileAction->setEnabled(false);
-  QWidget* pSpacer1 = new QWidget(pToolBar);
-  pSpacer1->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
-  pToolBar->addWidget(pSpacer1);
   toolBroadcastAction = ActionHelper::createAction(pToolBar, "Send &Broadcast Message", this,
                                                    &lmcMainWindow::userBroadcastAction_triggered,
                                                    QIcon(QPixmap(IDR_BROADCASTMSG, "PNG")));
   toolBroadcastAction->setIconText(tr("Broadcast"));
-  QWidget* pSpacer2 = new QWidget(pToolBar);
-  pSpacer2->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
-  pToolBar->addWidget(pSpacer2);
   toolChatRoomAction = ActionHelper::createAction(pToolBar, "&New Chat Room", this,
                                                   &lmcMainWindow::chatRoomAction_triggered,
                                                   QIcon(QPixmap(IDR_NEWCHATROOM, "PNG")));
@@ -1006,6 +1000,11 @@ void lmcMainWindow::createToolBar(void) {
   QToolButton* btnChatRoom = qobject_cast<QToolButton*>(pToolBar->widgetForAction(toolChatRoomAction));
   QToolButton* btnPublicChat = qobject_cast<QToolButton*>(pToolBar->widgetForAction(toolPublicChatAction));
   Q_ASSERT(btnStatus && btnChat && btnFile && btnBroadcast && btnChatRoom && btnPublicChat);
+  // Equal-width tabs that share the bar; nothing is pushed into the overflow menu.
+  for(QToolButton* b : {btnChat, btnFile, btnBroadcast, btnChatRoom, btnPublicChat}) {
+    b->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+    b->setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
+  }
   btnStatus->setPopupMode(QToolButton::InstantPopup);
   btnStatus->setFocusPolicy(Qt::StrongFocus);
   btnChat->setFocusPolicy(Qt::StrongFocus);

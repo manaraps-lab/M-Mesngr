@@ -46,7 +46,8 @@ private:
     US_Check,
     US_Error,
     US_New,
-    US_Latest
+    US_Latest,
+    US_Unavailable
   };
 
   Ui::UpdateWindow* ui;

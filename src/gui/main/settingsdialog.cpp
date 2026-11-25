@@ -532,7 +532,7 @@ void lmcSettingsDialog::loadSettings(void) {
   ui.chkSingleClickTray->setChecked(pSettings->value(IDS_SINGLECLICKTRAY, IDS_SINGLECLICKTRAY_VAL).toBool());
   ui.chkSysTrayMsg->setChecked(pSettings->value(IDS_SYSTRAYMSG, IDS_SYSTRAYMSG_VAL).toBool());
   ui.chkAllowSysTrayMin->setChecked(pSettings->value(IDS_ALLOWSYSTRAYMIN, IDS_ALLOWSYSTRAYMIN_VAL).toBool());
-  QString langCode = pSettings->value(IDS_LANGUAGE, IDS_LANGUAGE_VAL).toString();
+  QString langCode = pSettings->value(IDS_LANGUAGE, IDS_LANGUAGE_DEFAULT).toString();
   for(int index = 0; index < ui.cboLanguage->count(); index++) {
     QString code = ui.cboLanguage->itemData(index, Qt::UserRole).toString();
     if(langCode.compare(code) == 0) {
@@ -633,7 +633,7 @@ void lmcSettingsDialog::saveSettings(void) {
   pSettings->setValue(IDS_SYSTRAYMSG, ui.chkSysTrayMsg->isChecked(), IDS_SYSTRAYMSG_VAL);
   pSettings->setValue(IDS_ALLOWSYSTRAYMIN, ui.chkAllowSysTrayMin->isChecked(), IDS_ALLOWSYSTRAYMIN_VAL);
   QString langCode = ui.cboLanguage->itemData(ui.cboLanguage->currentIndex(), Qt::UserRole).toString();
-  pSettings->setValue(IDS_LANGUAGE, langCode, IDS_LANGUAGE_VAL);
+  pSettings->setValue(IDS_LANGUAGE, langCode, IDS_LANGUAGE_DEFAULT);
 
   pSettings->setValue(IDS_USERNAME, ui.txtUserName->text(), IDS_USERNAME_VAL);
   pSettings->setValue(IDS_USERFIRSTNAME, ui.txtFirstName->text(), IDS_USERFIRSTNAME_VAL);

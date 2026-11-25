@@ -125,17 +125,21 @@ void lmcUpdateWindow::setUIText(void) {
 }
 
 void lmcUpdateWindow::checkForUpdates() {
-  ui->btnRecheck->setEnabled(false);
-  status = US_Check;
+  // MANARA has no update server yet, and the inherited address belongs to
+  // another project, so no request is sent. Updates come from the releases
+  // page of the project repository.
+  status = US_Unavailable;
   setUIText();
-
-  emit messageSent(MT_Version, NULL, NULL);
+  ui->btnRecheck->setEnabled(true);
 }
 
 QString lmcUpdateWindow::getStatusMessage(void) {
   QString message;
 
   switch(status) {
+  case US_Unavailable:
+    message = tr("Automatic update checking is not available yet. Get new versions from the project releases page.");
+    break;
   case US_Check:
     message = tr("Launching an update request...");
     break;

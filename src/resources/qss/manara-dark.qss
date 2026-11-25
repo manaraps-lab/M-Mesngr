@@ -81,7 +81,7 @@ QLineEdit#txtSearch:focus { border-color: #1E4FC2; }
 QLabel#lblEmpty { color: #8C99C4; background: #0F1838; border: 1px solid #1E2A57; border-radius: 12px; padding: 24px; }
 
 /* ---- bottom tab bar, menu button, chat header ---- */
-QWidget#wgtToolBar QToolButton { color: #B4C0E6; font-size: 8pt; padding: 4px 6px; border-radius: 10px; min-width: 52px; }
+QWidget#wgtToolBar QToolButton { color: #B4C0E6; font-size: 8pt; padding: 4px 2px; border-radius: 10px; min-width: 0; }
 QWidget#wgtToolBar QToolButton:hover { background: #162556; color: #FFFFFF; }
 QWidget#wgtToolBar QToolButton:disabled { color: #5C6896; }
 QToolButton#btnMainMenu { color: #EAF0FF; font-size: 16pt; font-weight: 700; border: none; padding: 0 8px; }

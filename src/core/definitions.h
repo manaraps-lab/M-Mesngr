@@ -16,9 +16,9 @@
 #ifndef IDA_VERSION
 #define IDA_VERSION "0.0.0"
 #endif
-#define IDA_COPYRIGHT "Copyright (C) 2026 LAN Messenger Project."
-#define IDA_CONTACT "lanmsngr@gmail.com"
-#define IDA_DOMAIN "https://lanmessenger.github.io"
+#define IDA_COPYRIGHT "Copyright (C) 2026 MANARA Messenger. Based on LAN Messenger (GPL-3.0)."
+#define IDA_CONTACT ""
+#define IDA_DOMAIN "https://github.com/manaraps-lab/M-Mesngr"
 //	Bare host for QGuiApplication::setOrganizationDomain (no scheme:
 //	organizationDomain is a domain name, IDA_DOMAIN above is a URL).
 //	Note: the previous value was the full URL. On macOS (NativeFormat)
@@ -26,11 +26,11 @@
 //	settings-path change there (the old value was never a valid domain).
 //	Linux IniFormat / Windows registry paths use organizationName +
 //	applicationName (no domain), so this change affects the macOS plist only.
-#define IDA_DOMAIN_HOST "lanmessenger.github.io"
+#define IDA_DOMAIN_HOST "github.com"
 //	Public URLs (single source of truth for in-app links).
-#define IDA_DOCS_URL "https://lanmessenger.github.io/docs"
-#define IDA_REPO_URL "https://github.com/lanmessenger/lanmessenger"
-#define IDA_ISSUES_URL "https://github.com/lanmessenger/lanmessenger/issues"
+#define IDA_DOCS_URL "https://github.com/manaraps-lab/M-Mesngr"
+#define IDA_REPO_URL "https://github.com/manaraps-lab/M-Mesngr"
+#define IDA_ISSUES_URL "https://github.com/manaraps-lab/M-Mesngr/issues"
 //	Canonical Linux desktop entry ID (reverse-DNS). File names are
 //	LMC_DESKTOP_ID ".desktop"; keep Icon/launchable/desktopFileName in sync.
 #define LMC_DESKTOP_ID "io.github.lanmessenger.lmc"
