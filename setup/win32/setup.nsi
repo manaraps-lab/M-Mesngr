@@ -3,6 +3,8 @@
 ; Copyright (c) 2026 LAN Messenger.
 
 
+Unicode true
+
 ;Define the compression to be used (lzma gives best compression)
 SetCompressor /SOLID lzma
 
@@ -43,7 +45,7 @@ SetCompressor /SOLID lzma
   ;Name and file
   Name "${ProductName}"
   BrandingText $BrandText
-  OutFile "lmc-${ProductVersion}-win64.exe"
+  OutFile "MANARA-Messenger-Setup-${ProductVersion}-win64.exe"
 
   ;Default installation folder (64-bit app: $PROGRAMFILES would resolve to x86)
   InstallDir "$PROGRAMFILES64\${ProductName}"
@@ -82,7 +84,6 @@ SetCompressor /SOLID lzma
   !insertmacro MUI_PAGE_INSTFILES
   !define MUI_FINISHPAGE_TITLE_3LINES
   !define MUI_FINISHPAGE_RUN "$INSTDIR\${AppExec}"
-  !define MUI_FINISHPAGE_RUN_TEXT "تشغيل ${ProductName}"
   !define MUI_PAGE_CUSTOMFUNCTION_SHOW FinishPageShow
   !insertmacro MUI_PAGE_FINISH
 

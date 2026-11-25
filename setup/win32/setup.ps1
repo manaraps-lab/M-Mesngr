@@ -38,7 +38,7 @@ try {
   & $makensis "/DExeFolder=$ExeFolder" "/DProductVersion=$ProductVersion" "/DInstallerVersion=$installerVersion" 'setup.nsi'
   if ($LASTEXITCODE -ne 0) { throw "makensis failed with exit code $LASTEXITCODE." }
 
-  $installer = "lmc-$ProductVersion-win64.exe"
+  $installer = "MANARA-Messenger-Setup-$ProductVersion-win64.exe"
   if (-not (Test-Path $installer)) { throw "installer $installer not built." }
   Move-Item -Force $installer (Join-Path '..' $installer)
 }

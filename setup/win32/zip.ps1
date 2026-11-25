@@ -24,4 +24,4 @@ Compress-Archive `
 	-LiteralPath $items `
 	-CompressionLevel Optimal `
 	-Force `
-	-DestinationPath ..\lmc-$Version-win64.zip
+	-DestinationPath ..\MANARA-Messenger-$Version-win64.zip
