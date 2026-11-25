@@ -151,7 +151,7 @@ jobs:
       - name: Upload packages
         uses: actions/upload-artifact@v7
         with:
-          name: packages-windows
-          path: setup/lmc-*-win64.exe
+          name: MANARA-Messenger-Windows-Installer
+          path: setup/MANARA-Messenger-Setup-*-win64.exe
           if-no-files-found: error
           retention-days: 3
