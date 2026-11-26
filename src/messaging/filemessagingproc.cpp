@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (c) 2010 - 2012 Qualia Digital Solutions.
 // Copyright (c) 2026 LAN Messenger.
+#include "core/filecipher.h"
 #include "core/lmccategories.h"
 #include "core/pathsafety.h"
 #include "core/stdlocation.h"
@@ -78,8 +79,17 @@ void lmcMessaging::prepareFile(MessageType type, qint64 msgId, bool retry, QStri
     if(tcpPort > 0)
       pMessage->addData(XN_TCPPORT, QString::number(tcpPort));
     // pMessage now contains the generated id, file mode and other details.
-    // Convert this to string now.
-    szMessage = pMessage->toString();
+    // Convert this to string now. The key is added to the local copy only.
+    {
+      const QByteArray key = findFileKey(lpszUserId, pMessage->data(XN_FILEID), FM_Receive);
+      if(!key.isEmpty() && pMessage->data(XN_FILEENC) == QLatin1String("aes256gcm")) {
+        XmlMessage local = pMessage->clone();
+        local.addData(XN_FILEKEY, QString::fromLatin1(key.toHex()));
+        szMessage = local.toString();
+      } else {
+        szMessage = pMessage->toString();
+      }
+    }
     pNetwork->initReceiveFile(&user->id, &user->address, &szMessage);
     break;
   }
@@ -148,6 +158,15 @@ void lmcMessaging::processFile(MessageHeader* pHeader, XmlMessage* pMessage) {
   case FO_Accept:
     if(updateFileTransfer(FM_Send, (FileOp)fileOp, &pHeader->userId, pMessage))
       emit messageReceived(pHeader->type, &pHeader->userId, pMessage);
+    //  Encrypt only when the receiver echoed it; the key is ours, never the peer's.
+    pMessage->removeData(XN_FILEKEY);
+    {
+      const QByteArray key = findFileKey(&pHeader->userId, pMessage->data(XN_FILEID), FM_Send);
+      if(!key.isEmpty() && pMessage->data(XN_FILEENC) == QLatin1String("aes256gcm"))
+        pMessage->addData(XN_FILEKEY, QString::fromLatin1(key.toHex()));
+      else
+        pMessage->removeData(XN_FILEENC);
+    }
     szMessage = pMessage->toString();
     //  Dial the receiver's advertised port. Old peers send none
     //  (data() is null -> toInt() == 0) and we fall back to the local
@@ -225,7 +244,18 @@ bool lmcMessaging::addFileTransfer(FileMode fileMode, QString* lpszUserId, XmlMe
     pMessage->addData(XN_FILENAME, fileInfo.fileName());
     pMessage->addData(XN_FILESIZE, QString::number(fileInfo.size()));
     pMessage->addData(XN_FILEHASH, QStringLiteral("sha256"));
+    if(fileType != FT_Avatar) {
+      //  The key travels inside this offer, which is encrypted for the receiver
+      //  like every message. It is kept only here and in the offer itself.
+      const QByteArray key = FileCipher::randomKey();
+      if(!key.isEmpty()) {
+        fileList.last().key = key;
+        pMessage->addData(XN_FILEENC, QStringLiteral("aes256gcm"));
+        pMessage->addData(XN_FILEKEY, QString::fromLatin1(key.toHex()));
+      }
+    }
     xmlMessage = pMessage->clone();
+    xmlMessage.removeData(XN_FILEKEY);  // never hand the key to upper layers
     switch(fileType) {
     case FT_Normal:
       emit messageReceived(MT_File, lpszUserId, &xmlMessage);
@@ -248,6 +278,12 @@ bool lmcMessaging::addFileTransfer(FileMode fileMode, QString* lpszUserId, XmlMe
                               PathSafety::sanitizeFileName(pMessage->data(XN_FILENAME)),
                               pMessage->data(XN_FILESIZE).toLongLong(), fileMode, FO_Request, (FileType)fileType));
     fileList.last().hash = pMessage->data(XN_FILEHASH) == QLatin1String("sha256");
+    if(fileList.last().hash && fileType != FT_Avatar && pMessage->data(XN_FILEENC) == QLatin1String("aes256gcm")) {
+      const QByteArray key = QByteArray::fromHex(pMessage->data(XN_FILEKEY).toLatin1());
+      if(key.size() == FileCipher::kKeySize)
+        fileList.last().key = key;
+    }
+    pMessage->removeData(XN_FILEKEY);  // keep the key out of upper layers and logs
     switch(fileType) {
     case FT_Avatar:
       xmlMessage.addData(XN_MODE, FileModeNames[FM_Receive]);
@@ -292,6 +328,13 @@ bool lmcMessaging::addFileTransfer(FileMode fileMode, QString* lpszUserId, XmlMe
   return emitMsg;
 }
 
+QByteArray lmcMessaging::findFileKey(const QString* lpszUserId, const QString& fileId, FileMode mode) const {
+  for(const TransFile& f : fileList)
+    if(f.userId == *lpszUserId && f.id == fileId && f.mode == mode)
+      return f.key;
+  return QByteArray();
+}
+
 bool lmcMessaging::updateFileTransfer(FileMode fileMode, FileOp fileOp, QString* lpszUserId, XmlMessage* pMessage) {
   QString fileId = pMessage->data(XN_FILEID);
   int fileType = Helper::indexOf(FileTypeNames, FT_Max, pMessage->data(XN_FILETYPE));
@@ -324,6 +367,8 @@ bool lmcMessaging::updateFileTransfer(FileMode fileMode, FileOp fileOp, QString*
         } else {
           if(transFile.hash)
             pMessage->addData(XN_FILEHASH, QStringLiteral("sha256"));
+          if(transFile.hash && !transFile.key.isEmpty())
+            pMessage->addData(XN_FILEENC, QStringLiteral("aes256gcm"));  // the key itself is never echoed
           switch(fileType) {
           case FT_Normal:
             //  set valid free file name and correct path

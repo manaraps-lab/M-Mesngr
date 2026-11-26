@@ -5,6 +5,7 @@
 #include <QTemporaryDir>
 
 #include "core/filedigest.h"
+#include "core/filecipher.h"
 #include "network/netstreamer.h"
 #include "tools/loopback.h"
 
@@ -20,12 +21,20 @@ private:
   QString makeFile(const QString& name, qint64 size);
   // Runs one transfer; returns {sender outcome, receiver outcome}.
   QPair<Outcome, Outcome> run(const QString& src, const QString& dst, bool senderDigest, bool receiverDigest,
-                              qint64 flipAt = -1, qint64 cutAt = -1);
+                              qint64 flipAt = -1, qint64 cutAt = -1, const QByteArray& senderKey = QByteArray(),
+                              const QByteArray& receiverKey = QByteArray());
 private slots:
   void initTestCase() { QVERIFY(dir.isValid()); }
   void withDigestArrivesIntact_data();
   void withDigestArrivesIntact();
   void legacyPeerStillWorks();
+  void encryptedArrivesIntact_data();
+  void encryptedArrivesIntact();
+  void encryptedContentIsNotOnTheWire();
+  void encryptedCorruptionIsDetected_data();
+  void encryptedCorruptionIsDetected();
+  void encryptedTruncationIsAnError();
+  void wrongKeyIsAnError();
   void corruptionIsDetected();
   void truncationIsAnError();
   void msgStreamSplitHeader();
@@ -49,7 +58,8 @@ QString TstTransfer::makeFile(const QString& name, qint64 size) {
 }
 
 QPair<Outcome, Outcome> TstTransfer::run(const QString& src, const QString& dst, bool senderDigest,
-                                         bool receiverDigest, qint64 flipAt, qint64 cutAt) {
+                                         bool receiverDigest, qint64 flipAt, qint64 cutAt, const QByteArray& senderKey,
+                                         const QByteArray& receiverKey) {
   const QString id(32, 'a');
   const qint64 size = QFileInfo(src).size();
   LoopbackServer server;
@@ -62,9 +72,13 @@ QPair<Outcome, Outcome> TstTransfer::run(const QString& src, const QString& dst,
 
   FileReceiver receiver(id, "alice", dst, "x", size, "127.0.0.1", port, FT_Normal);
   receiver.setDigestEnabled(receiverDigest);
+  if(!receiverKey.isEmpty())
+    receiver.setEncryptionKey(receiverKey);
   server.setReceiver(&receiver);
   FileSender sender(id, "bob", "alice", src, "x", size, "127.0.0.1", port, FT_Normal);
   sender.setDigestEnabled(senderDigest);
+  if(!senderKey.isEmpty())
+    sender.setEncryptionKey(senderKey);
 
   Outcome rx, tx;
   connect(&receiver, &FileReceiver::progressUpdated, [&](FileMode, FileOp op, FileType, QString*, QString*, QString*) {
@@ -130,6 +144,99 @@ void TstTransfer::truncationIsAnError() {
   QVERIFY(r.second.done);
   QCOMPARE(int(r.second.op), int(FO_Error));
   QVERIFY2(!QFile::exists(dst), "partial file must be deleted");
+}
+
+void TstTransfer::encryptedArrivesIntact_data() {
+  QTest::addColumn<qint64>("size");
+  QTest::newRow("empty") << qint64(0);
+  QTest::newRow("1 byte") << qint64(1);
+  QTest::newRow("one chunk exact") << qint64(256 * 1024);
+  QTest::newRow("chunk+1") << qint64(256 * 1024 + 1);
+  QTest::newRow("odd 5.3MB") << qint64(5 * 1024 * 1024 + 333);
+}
+
+void TstTransfer::encryptedArrivesIntact() {
+  QFETCH(qint64, size);
+  const QByteArray key = FileCipher::randomKey();
+  QString src = makeFile("src5.bin", size), dst = dir.filePath("dst5.bin");
+  QFile::remove(dst);
+  auto r = run(src, dst, true, true, -1, -1, key, key);
+  QVERIFY(r.second.done);
+  QCOMPARE(int(r.second.op), int(FO_Complete));
+  QVERIFY(r.first.done);
+  QCOMPARE(int(r.first.op), int(FO_Complete));
+  QCOMPARE(QFileInfo(dst).size(), size);
+  QCOMPARE(FileDigest::ofFile(dst), FileDigest::ofFile(src));
+}
+
+//  A recognisable plaintext must not appear in what crosses the socket.
+void TstTransfer::encryptedContentIsNotOnTheWire() {
+  const QString src = dir.filePath("plain.bin"), dst = dir.filePath("plain_dst.bin");
+  {
+    QFile f(src);
+    QVERIFY(f.open(QIODevice::WriteOnly));
+    f.write(QByteArray("SECRET-MARKER-0123456789 ").repeated(40000));  // ~1 MB
+  }
+  QFile::remove(dst);
+  const QByteArray key = FileCipher::randomKey();
+  const QString id(32, 'a');
+  const qint64 size = QFileInfo(src).size();
+  LoopbackServer server;
+  QByteArray seen;
+  TapProxy tap(server.port(), &seen);
+  FileReceiver receiver(id, "alice", dst, "x", size, "127.0.0.1", tap.port(), FT_Normal);
+  receiver.setDigestEnabled(true);
+  receiver.setEncryptionKey(key);
+  server.setReceiver(&receiver);
+  FileSender sender(id, "bob", "alice", src, "x", size, "127.0.0.1", tap.port(), FT_Normal);
+  sender.setDigestEnabled(true);
+  sender.setEncryptionKey(key);
+  bool done = false;
+  connect(&receiver, &FileReceiver::progressUpdated, [&](FileMode, FileOp op, FileType, QString*, QString*, QString*) {
+    if(op == FO_Complete || op == FO_Error) done = true;
+  });
+  sender.init();
+  QTRY_VERIFY_WITH_TIMEOUT(done, 20000);
+  QCOMPARE(FileDigest::ofFile(dst), FileDigest::ofFile(src));
+  QVERIFY2(seen.size() > size, "stream should carry the content plus record overhead");
+  QVERIFY2(!seen.contains("SECRET-MARKER"), "plaintext leaked onto the wire");
+}
+
+void TstTransfer::encryptedCorruptionIsDetected_data() {
+  QTest::addColumn<qint64>("flipAt");
+  QTest::newRow("in a ciphertext byte") << qint64(1000000);
+  QTest::newRow("in the first record header") << qint64(2);
+  QTest::newRow("in a tag") << qint64(4 + 256 * 1024 + 3);
+}
+
+void TstTransfer::encryptedCorruptionIsDetected() {
+  QFETCH(qint64, flipAt);
+  const QByteArray key = FileCipher::randomKey();
+  QString src = makeFile("src6.bin", 2 * 1024 * 1024), dst = dir.filePath("dst6.bin");
+  QFile::remove(dst);
+  auto r = run(src, dst, true, true, flipAt, -1, key, key);
+  QVERIFY(r.second.done);
+  QCOMPARE(int(r.second.op), int(FO_Error));
+  QVERIFY2(!QFile::exists(dst), "tampered file must be deleted");
+}
+
+void TstTransfer::encryptedTruncationIsAnError() {
+  const QByteArray key = FileCipher::randomKey();
+  QString src = makeFile("src7.bin", 2 * 1024 * 1024), dst = dir.filePath("dst7.bin");
+  QFile::remove(dst);
+  auto r = run(src, dst, true, true, -1, 1000000, key, key);
+  QVERIFY(r.second.done);
+  QCOMPARE(int(r.second.op), int(FO_Error));
+  QVERIFY2(!QFile::exists(dst), "partial file must be deleted");
+}
+
+void TstTransfer::wrongKeyIsAnError() {
+  QString src = makeFile("src8.bin", 600 * 1024), dst = dir.filePath("dst8.bin");
+  QFile::remove(dst);
+  auto r = run(src, dst, true, true, -1, -1, FileCipher::randomKey(), FileCipher::randomKey());
+  QVERIFY(r.second.done);
+  QCOMPARE(int(r.second.op), int(FO_Error));
+  QVERIFY2(!QFile::exists(dst), "undecryptable file must not be left behind");
 }
 
 static QByteArray frame(const QByteArray& payload) {

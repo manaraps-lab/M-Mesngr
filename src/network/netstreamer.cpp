@@ -9,6 +9,7 @@
 #include <QFile>
 #include <QPointer>
 #include "core/filedigest.h"
+#include "core/filecipher.h"
 #include "core/lmccategories.h"
 #include "netstreamer.h"
 
@@ -50,6 +51,23 @@ FileSender::~FileSender(void) {
 
 void FileSender::setDigestEnabled(bool enabled) {
   digestEnabled = enabled;
+}
+
+void FileSender::setEncryptionKey(const QByteArray& key) {
+  cipher.reset(new FileCipher(key));
+  if(!cipher->isValid())
+    cipher.reset();
+}
+
+//  Hands content (or the digest) to the socket, as one encrypted record when a
+//  key was agreed.
+bool FileSender::writeContent(const char* data, qint64 length) {
+  if(!cipher)
+    return socket->write(data, length) == length;
+  QByteArray record = cipher->seal(data, length);
+  if(record.isEmpty())
+    return false;
+  return socket->write(record) == record.size();
 }
 
 void FileSender::init(void) {
@@ -164,7 +182,11 @@ void FileSender::pump(void) {
           fail();
           return;
         }
-        socket->write(sum);
+        if(!writeContent(sum.constData(), sum.size())) {
+          finishing = false;
+          fail();
+          return;
+        }
       }
       socket->disconnectFromHost();
       return;
@@ -179,7 +201,7 @@ void FileSender::pump(void) {
     }
     if(digestEnabled && digest)
       digest->update(buffer.constData(), got);
-    if(socket->write(buffer.constData(), got) != got) {
+    if(!writeContent(buffer.constData(), got)) {
       fail();
       return;
     }
@@ -241,6 +263,12 @@ FileReceiver::~FileReceiver(void) {
 
 void FileReceiver::setDigestEnabled(bool enabled) {
   digestEnabled = enabled;
+}
+
+void FileReceiver::setEncryptionKey(const QByteArray& key) {
+  cipher.reset(new FileCipher(key));
+  if(!cipher->isValid())
+    cipher.reset();
 }
 
 void FileReceiver::init(QTcpSocket* socket) {
@@ -314,6 +342,36 @@ void FileReceiver::readyRead(void) {
   if(!active)
     return;
 
+  if(cipher) {
+    //  Encrypted stream: collect bytes, then open every complete record.
+    encIn.append(socket->readAll());
+    while(active) {
+      if(encIn.size() < FileCipher::kHeaderSize)
+        return;
+      const unsigned char* h = reinterpret_cast<const unsigned char*>(encIn.constData());
+      const quint32 n = (quint32(h[0]) << 24) | (quint32(h[1]) << 16) | (quint32(h[2]) << 8) | quint32(h[3]);
+      if(n < 1 || n > quint32(FileCipher::kMaxRecord)) {
+        qCWarning(lmcNetTcp(), "File %s from %s: invalid record length, discarding", qPrintable(id), qPrintable(peerId));
+        fail();
+        return;
+      }
+      const qint64 total = FileCipher::kHeaderSize + qint64(n) + FileCipher::kTagSize;
+      if(encIn.size() < total)
+        return;
+      QByteArray plain;
+      if(!cipher->open(encIn.constData() + FileCipher::kHeaderSize, n, encIn.constData() + FileCipher::kHeaderSize + n,
+                       plain)) {
+        qCWarning(lmcNetTcp(), "File %s from %s failed decryption, discarding", qPrintable(id), qPrintable(peerId));
+        fail();
+        return;
+      }
+      encIn.remove(0, static_cast<int>(total));
+      if(!consume(plain.constData(), plain.size()))
+        return;
+    }
+    return;
+  }
+
   //	Drain everything available: several chunks may arrive between event
   //	loop turns, but Qt emits readyRead only once for them. Reading a
   //	single chunk per signal leaves the tail buffered with no new signal
@@ -327,49 +385,57 @@ void FileReceiver::readyRead(void) {
     qint64 bytesReceived = socket->read(buffer.data(), toRead);
     if(bytesReceived <= 0)
       break;
-
-    if(contentLeft > 0) {
-      if(file->write(buffer.constData(), bytesReceived) != bytesReceived) {
-        fail();
-        return;
-      }
-      if(digestEnabled && digest)
-        digest->update(buffer.constData(), bytesReceived);
-      sentBytes += bytesReceived;
-    } else {
-      trailer.append(buffer.constData(), bytesReceived);
-    }
-
-    if(sentBytes >= fileSize) {
-      if(file->isOpen())
-        file->close();
-      if(!digestEnabled) {
-        active = false;
-        if(timer)
-          timer->stop();
-        socket->close();
-        emit progressUpdated(FM_Receive, FO_Complete, type, &id, &peerId, &filePath);
-        return;
-      }
-      if(trailer.size() >= 32) {
-        //  All content arrived; it counts as complete only if it matches
-        //  what the sender hashed.
-        QByteArray expected = digest ? digest->finish() : QByteArray();
-        if(expected.size() != 32 || trailer.left(32) != expected) {
-          qCWarning(lmcNetTcp(), "File %s from %s failed SHA-256 verification, discarding",
-                    qPrintable(id), qPrintable(peerId));
-          fail();
-          return;
-        }
-        active = false;
-        if(timer)
-          timer->stop();
-        socket->close();
-        emit progressUpdated(FM_Receive, FO_Complete, type, &id, &peerId, &filePath);
-        return;
-      }
-    }
+    if(!consume(buffer.constData(), bytesReceived))
+      return;
   }
+}
+
+bool FileReceiver::consume(const char* data, qint64 length) {
+  qint64 contentLeft = fileSize - sentBytes;
+  qint64 intoFile = contentLeft > 0 ? (length < contentLeft ? length : contentLeft) : 0;
+  if(intoFile > 0) {
+    if(file->write(data, intoFile) != intoFile) {
+      fail();
+      return false;
+    }
+    if(digestEnabled && digest)
+      digest->update(data, intoFile);
+    sentBytes += intoFile;
+  }
+  if(length > intoFile)
+    trailer.append(data + intoFile, static_cast<int>(length - intoFile));
+
+  if(sentBytes < fileSize)
+    return true;
+
+  if(file->isOpen())
+    file->close();
+  if(!digestEnabled) {
+    active = false;
+    if(timer)
+      timer->stop();
+    socket->close();
+    emit progressUpdated(FM_Receive, FO_Complete, type, &id, &peerId, &filePath);
+    return false;
+  }
+  if(trailer.size() >= 32) {
+    //  All content arrived; it counts as complete only if it matches
+    //  what the sender hashed.
+    QByteArray expected = digest ? digest->finish() : QByteArray();
+    if(expected.size() != 32 || trailer.left(32) != expected) {
+      qCWarning(lmcNetTcp(), "File %s from %s failed SHA-256 verification, discarding",
+                qPrintable(id), qPrintable(peerId));
+      fail();
+      return false;
+    }
+    active = false;
+    if(timer)
+      timer->stop();
+    socket->close();
+    emit progressUpdated(FM_Receive, FO_Complete, type, &id, &peerId, &filePath);
+    return false;
+  }
+  return true;
 }
 
 void FileReceiver::timer_timeout(void) {

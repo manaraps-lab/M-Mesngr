@@ -62,6 +62,8 @@
 #define XN_FOLDERID "folderid"
 #define XN_RELPATH "relpath"
 #define XN_FILECOUNT "filecount"
+#define XN_FILEENC "fileenc"    // "aes256gcm": file content is encrypted, negotiated per transfer
+#define XN_FILEKEY "filekey"    // hex of the per-file key; only ever inside an encrypted message, never echoed
 #define XN_FILEHASH "filehash"  // "sha256": sender appends a SHA-256 trailer, negotiated per transfer
 
 class XmlMessage : public QDomDocument {

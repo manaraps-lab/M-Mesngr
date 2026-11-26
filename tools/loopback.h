@@ -46,6 +46,39 @@ private:
 // Forwards connections to `targetPort`. `flipAt` >= 0 flips one bit of the
 // server->client... here: client->server (sender->receiver) byte at that stream
 // offset; `cutAt` >= 0 drops the connection after that many bytes.
+//  Pass-through proxy that records everything the sender wrote (after the
+//  handshake) so a test can inspect what actually crossed the socket.
+class TapProxy : public QObject {
+  Q_OBJECT
+public:
+  TapProxy(quint16 targetPort, QByteArray* sink, QObject* parent = nullptr)
+      : QObject(parent), target(targetPort), out(sink) {
+    connect(&server, &QTcpServer::newConnection, this, &TapProxy::onConnection);
+    server.listen(QHostAddress::LocalHost, 0);
+  }
+  quint16 port() const { return server.serverPort(); }
+
+private slots:
+  void onConnection() {
+    QTcpSocket* in = server.nextPendingConnection();
+    QTcpSocket* up = new QTcpSocket(this);
+    up->connectToHost(QHostAddress::LocalHost, target);
+    connect(in, &QIODevice::readyRead, this, [this, in, up]() {
+      QByteArray data = in->readAll();
+      out->append(data);
+      up->write(data);
+    });
+    connect(up, &QIODevice::readyRead, this, [in, up]() { in->write(up->readAll()); });
+    connect(in, &QAbstractSocket::disconnected, up, &QTcpSocket::disconnectFromHost);
+    connect(up, &QAbstractSocket::disconnected, in, &QTcpSocket::disconnectFromHost);
+  }
+
+private:
+  QTcpServer server;
+  quint16 target;
+  QByteArray* out;
+};
+
 class TamperProxy : public QObject {
   Q_OBJECT
 public:

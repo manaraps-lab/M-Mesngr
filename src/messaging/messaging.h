@@ -70,6 +70,7 @@ struct TransFile : public Transfer {
   QString folderId;
   QString relPath;
   bool hash = false;  // both peers agreed on a SHA-256 trailer
+  QByteArray key;     // per-file AES key (sender: generated, receiver: from the offer); empty = not encrypted
 
   TransFile(void) {}
   TransFile(QString szId, QString szFolderId, QString szUserId, QString szPath, QString szName,
@@ -186,6 +187,7 @@ private:
   void resendMessage(MessageType type, qint64 msgId, QString* lpszUserId, XmlMessage* pMessage);
   bool addFileTransfer(FileMode fileMode, QString* lpszUserId, XmlMessage* pMessage);
   bool updateFileTransfer(FileMode fileMode, FileOp fileOp, QString* lpszUserId, XmlMessage* pMessage);
+  QByteArray findFileKey(const QString* lpszUserId, const QString& fileId, FileMode mode) const;
   QString getFreeFileName(QString fileName);
   bool addFolderTransfer(FileMode folderMode, QString* lpszUserId, XmlMessage* pMessage);
   bool updateFolderTransfer(FileMode folderMode, FileOp folderOp, QString* lpszUserId, XmlMessage* pMessage);

@@ -152,7 +152,12 @@ void lmcTcpNetwork::initSendFile(QString* lpszReceiverId, QString* lpszAddress, 
 
   FileSender* sender = new FileSender(xmlMessage.data(XN_FILEID), localId, *lpszReceiverId, xmlMessage.data(XN_FILEPATH),
                                       xmlMessage.data(XN_FILENAME), xmlMessage.data(XN_FILESIZE).toLongLong(), *lpszAddress, peerPort, (FileType)type);
-  sender->setDigestEnabled(xmlMessage.data(XN_FILEHASH) == QLatin1String("sha256"));
+  const bool senderDigest = xmlMessage.data(XN_FILEHASH) == QLatin1String("sha256");
+  sender->setDigestEnabled(senderDigest);
+  if(senderDigest && xmlMessage.data(XN_FILEENC) == QLatin1String("aes256gcm"))
+    sender->setEncryptionKey(QByteArray::fromHex(xmlMessage.data(XN_FILEKEY).toLatin1()));
+  qCInfo(lmcNetTcp(), "File %s: digest %s, encryption %s", qPrintable(xmlMessage.data(XN_FILEID)),
+         senderDigest ? "on" : "off", xmlMessage.data(XN_FILEKEY).isEmpty() ? "off" : "on");
   connect(sender, &FileSender::progressUpdated, this, &lmcTcpNetwork::update);
   sendList.prepend(sender);
   sender->init();
@@ -164,7 +169,12 @@ void lmcTcpNetwork::initReceiveFile(QString* lpszSenderId, QString* lpszAddress,
 
   FileReceiver* receiver = new FileReceiver(xmlMessage.data(XN_FILEID), *lpszSenderId, xmlMessage.data(XN_FILEPATH),
                                             xmlMessage.data(XN_FILENAME), xmlMessage.data(XN_FILESIZE).toLongLong(), *lpszAddress, tcpPort, (FileType)type);
-  receiver->setDigestEnabled(xmlMessage.data(XN_FILEHASH) == QLatin1String("sha256"));
+  const bool receiverDigest = xmlMessage.data(XN_FILEHASH) == QLatin1String("sha256");
+  receiver->setDigestEnabled(receiverDigest);
+  if(receiverDigest && xmlMessage.data(XN_FILEENC) == QLatin1String("aes256gcm"))
+    receiver->setEncryptionKey(QByteArray::fromHex(xmlMessage.data(XN_FILEKEY).toLatin1()));
+  qCInfo(lmcNetTcp(), "File %s: digest %s, encryption %s", qPrintable(xmlMessage.data(XN_FILEID)),
+         receiverDigest ? "on" : "off", xmlMessage.data(XN_FILEKEY).isEmpty() ? "off" : "on");
   connect(receiver, &FileReceiver::progressUpdated, this, &lmcTcpNetwork::update);
   receiveList.prepend(receiver);
 }

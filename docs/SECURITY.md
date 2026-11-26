@@ -20,8 +20,14 @@ Source of the findings: docs/PHASE1_SOURCE_REVIEW.md (S1–S8).
 ## Not fixed (still true)
 * Discovery (UDP multicast) is plaintext. Anyone on the LAN can see user names
   and presence.
-* **File contents are not encrypted.** SHA-256 detects accidental corruption only;
-  an attacker who can modify the stream can also modify the hash.
+* **File encryption (new, negotiated per transfer).** When both sides support it,
+  file bytes are sent as AES-256-GCM records with a random per-file key. The key
+  travels only inside the already RSA+AES-encrypted offer message. This protects
+  against passive eavesdropping and detects tampering of the stream. It does
+  **not** stop an active man-in-the-middle during key exchange: public keys are
+  not authenticated. Against an older peer the transfer falls back to plain
+  bytes + SHA-256 (corruption detection only). Verified on Linux loopback and
+  mock peers only; not yet on two Windows PCs.
 * Text encryption is RSA-2048/OAEP-SHA1 + AES-256-CBC with EVP_BytesToKey and
   no MAC (upstream design). Not changed here.
 * The file-transfer socket is matched by file id + user id only; the peer

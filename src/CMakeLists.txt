@@ -29,6 +29,7 @@ add_library(lmc_core STATIC
     core/crypto.cpp
     core/pathsafety.cpp
     core/filedigest.cpp
+    core/filecipher.cpp
     network/datagram.cpp
     messaging/filemessagingproc.cpp
     storage/historystore.cpp
@@ -117,6 +118,7 @@ add_library(lmc_core STATIC
     core/shared.h
     core/pathsafety.h
     core/filedigest.h
+    core/filecipher.h
     core/transfermeter.h
     core/soundplayer.h
     core/stdlocation.h

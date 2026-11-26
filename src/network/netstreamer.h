@@ -13,6 +13,7 @@ class QTcpSocket;
 class QTimer;
 class QFile;
 class FileDigest;
+class FileCipher;
 
 /****************************************************************************
 ** Class: FileSender
@@ -32,6 +33,9 @@ public:
   //  Append a SHA-256 of the file after its bytes. Only enabled when the peer
   //  agreed to it (XN_FILEHASH), so older peers keep working unchanged.
   void setDigestEnabled(bool enabled);
+  //  Encrypt the content with AES-256-GCM using this per-file key (see
+  //  FileCipher). Only used when the peer agreed to it; requires the digest.
+  void setEncryptionKey(const QByteArray& key);
 
   QString id;
   QString peerId;
@@ -51,6 +55,7 @@ private:
   void sendFile(void);
   void pump(void);
   void fail(void);
+  bool writeContent(const char* data, qint64 length);
 
   QString localId;
   QString filePath;
@@ -66,6 +71,7 @@ private:
   bool finishing = false;
   bool digestEnabled = false;
   std::unique_ptr<FileDigest> digest;
+  std::unique_ptr<FileCipher> cipher;
   QTimer* timer;
 };
 
@@ -87,6 +93,8 @@ public:
   //  Expect a SHA-256 trailer after the file bytes and verify it. A corrupted
   //  file is deleted and reported as an error, never as complete.
   void setDigestEnabled(bool enabled);
+  //  Expect AES-256-GCM records (see FileCipher) instead of raw content.
+  void setEncryptionKey(const QByteArray& key);
 
   QString id;
   QString peerId;
@@ -103,6 +111,9 @@ private slots:
 private:
   void receiveFile(void);
   void fail(void);
+  //  Feeds decrypted/raw content bytes to the file and the digest check.
+  //  Returns false when the transfer ended (completed or failed).
+  bool consume(const char* data, qint64 length);
 
   QString filePath;
   QString fileName;
@@ -117,6 +128,8 @@ private:
   bool digestEnabled = false;
   std::unique_ptr<FileDigest> digest;
   QByteArray trailer;  //  digest bytes received after the content
+  std::unique_ptr<FileCipher> cipher;
+  QByteArray encIn;  //  encrypted bytes received but not yet a whole record
   QTimer* timer;
   int numTimeOuts;
   qint64 lastPosition;

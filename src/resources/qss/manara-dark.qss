@@ -81,7 +81,7 @@ QLineEdit#txtSearch:focus { border-color: #1E4FC2; }
 QLabel#lblEmpty { color: #8C99C4; background: #0F1838; border: 1px solid #1E2A57; border-radius: 12px; padding: 24px; }
 
 /* ---- bottom tab bar, menu button, chat header ---- */
-QWidget#wgtToolBar QToolButton { color: #B4C0E6; font-size: 8pt; padding: 4px 2px; border-radius: 10px; min-width: 0; }
+QWidget#wgtToolBar QToolButton { color: #B4C0E6; font-size: 8pt; padding: 4px 0; border-radius: 10px; min-width: 0; max-width: 100px; }
 QWidget#wgtToolBar QToolButton:hover { background: #162556; color: #FFFFFF; }
 QWidget#wgtToolBar QToolButton:disabled { color: #5C6896; }
 QToolButton#btnMainMenu { color: #EAF0FF; font-size: 16pt; font-weight: 700; border: none; padding: 0 8px; }
@@ -95,3 +95,5 @@ QLabel#welcomeTitle { color: #EAF0FF; font-size: 15pt; font-weight: 800; }
 QLabel#welcomeNotes { color: #8C99C4; font-size: 9pt; }
 QPushButton#btnWelcomeStart { background: #2D63E0; color: #FFFFFF; border: none; border-radius: 12px; padding: 9px 18px; font-weight: 700; }
 QPushButton#btnWelcomeStart:hover { background: #F28C28; }
+
+QWidget#wgtToolBar QToolBar { padding: 0 10px; border: none; }

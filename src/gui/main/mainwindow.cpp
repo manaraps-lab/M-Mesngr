@@ -268,13 +268,16 @@ void lmcMainWindow::removeUser(QString* lpszUserId) {
   if(!pItem)
     return;
 
+  QString name = pItem->text(0);
   QTreeWidgetItem* pGroup = pItem->parent();
-  pGroup->removeChild(pItem);
+  if(pGroup)
+    pGroup->removeChild(pItem);
+  delete pItem;
   updateEmptyState();
 
   if(isHidden() || !isActiveWindow()) {
     QString msg = tr("%1 is offline.");
-    showTrayMessage(TM_Status, msg.arg(pItem->text(0)));
+    showTrayMessage(TM_Status, msg.arg(name));
     pSoundPlayer->play(SE_UserOffline);
   }
 }

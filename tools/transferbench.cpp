@@ -2,10 +2,11 @@
 // Copyright (c) 2026 MANARA Messenger contributors.
 //
 // Loopback throughput benchmark for FileSender/FileReceiver.
-//   transferbench <sizeMB> <runs> [digest]
+//   transferbench <sizeMB> <runs> [digest|encrypt]
 // Loopback measures the software path (disk, copies, hashing, event loop), NOT
 // a real network: it is an upper bound and must not be quoted as LAN speed.
 #include <QCoreApplication>
+#include "core/filecipher.h"
 #include <QElapsedTimer>
 #include <QFile>
 #include <QTemporaryDir>
@@ -17,7 +18,8 @@ int main(int argc, char** argv) {
   QCoreApplication app(argc, argv);
   const int sizeMB = argc > 1 ? QString(argv[1]).toInt() : 512;
   const int runs = argc > 2 ? QString(argv[2]).toInt() : 3;
-  const bool digest = argc > 3 && QString(argv[3]) == "digest";
+  const bool encrypt = argc > 3 && QString(argv[3]) == "encrypt";
+  const bool digest = encrypt || (argc > 3 && QString(argv[3]) == "digest");
   QTextStream out(stdout);
 
   QTemporaryDir dir;
@@ -43,6 +45,11 @@ int main(int argc, char** argv) {
 #ifndef BENCH_LEGACY
     receiver.setDigestEnabled(digest);
     sender.setDigestEnabled(digest);
+    if(encrypt) {
+      const QByteArray key = FileCipher::randomKey();
+      sender.setEncryptionKey(key);
+      receiver.setEncryptionKey(key);
+    }
 #endif
     bool rxDone = false, txDone = false, ok = true;
     QObject::connect(&receiver, &FileReceiver::progressUpdated, [&](FileMode, FileOp op, FileType, QString*, QString*, QString*) {

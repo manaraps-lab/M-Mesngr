@@ -131,6 +131,7 @@ set_tests_properties(chatdnd PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
 # MANARA: untrusted file-name/path sanitising, SHA-256 digest, live speed meter.
 lmc_add_unit_test(pathsafety unit/tst_pathsafety.cpp)
 lmc_add_unit_test(filedigest unit/tst_filedigest.cpp)
+lmc_add_unit_test(filecipher unit/tst_filecipher.cpp)
 
 # MANARA: loopback tests of the file transfer engine (integrity, corruption,
 # truncation, legacy peers) and of MsgStream framing. No GUI needed.

@@ -1176,7 +1176,7 @@ File may not exist, or may not be compatible with this version of %2.</source>
     </message>
     <message>
         <source>New room</source>
-        <translation>غرفة جديدة</translation>
+        <translation>غرفة</translation>
     </message>
     <message>
         <source>Public</source>
