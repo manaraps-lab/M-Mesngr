@@ -797,6 +797,16 @@ void lmcCore::processFile(MessageType type, QString* lpszUserId, XmlMessage* pMe
   routeMessage(type, lpszUserId, pMessage);
 }
 
+void lmcCore::noteIncomingForBadge(lmcChatWindow* chat, MessageType type, QString* lpszUserId, XmlMessage* pMessage) {
+  if(!pMainWindow->isSingleWindow() || !lpszUserId || !pMessage)
+    return;
+  const bool isFileOffer = (type == MT_File || type == MT_Folder) &&
+                           pMessage->data(XN_FILEOP) == FileOpNames[FO_Request] &&
+                           pMessage->data(XN_MODE) == FileModeNames[FM_Receive];
+  if(type == MT_Message || isFileOffer)
+    pMainWindow->noteIncoming(*lpszUserId, chat, isFileOffer);
+}
+
 void lmcCore::routeMessage(MessageType type, QString* lpszUserId, XmlMessage* pMessage) {
   bool windowExists = false;
   bool needsNotice = (type == MT_Message || type == MT_Broadcast || type == MT_Failed || (type == MT_File && pMessage->data(XN_FILEOP) == FileOpNames[FO_Request]) || (type == MT_Folder && pMessage->data(XN_FILEOP) == FileOpNames[FO_Request]) || type == MT_GroupMessage);
@@ -823,6 +833,7 @@ void lmcCore::routeMessage(MessageType type, QString* lpszUserId, XmlMessage* pM
           chatWindows[index]->receiveMessage(type, lpszUserId, pMessage);
           if(needsNotice)
             showChatWindow(chatWindows[index], messageTop, needsNotice);
+          noteIncomingForBadge(chatWindows[index], type, lpszUserId, pMessage);
           windowExists = true;
           break;
         }
@@ -838,6 +849,7 @@ void lmcCore::routeMessage(MessageType type, QString* lpszUserId, XmlMessage* pM
     chatWindows.last()->receiveMessage(type, lpszUserId, pMessage);
     if(needsNotice)
       showChatWindow(chatWindows.last(), messageTop, needsNotice);
+    noteIncomingForBadge(chatWindows.last(), type, lpszUserId, pMessage);
   }
 }
 
@@ -1017,12 +1029,31 @@ void lmcCore::createChatWindow(QString* lpszUserId) {
   connect(pChatWindow, &lmcChatWindow::showTransfers, this, &lmcCore::showTransfers);
   connect(pChatWindow, &lmcChatWindow::closed, this, &lmcCore::chatWindow_closed);
   pChatWindow->init(pLocalUser, pRemoteUser, pMessaging->isConnected());
+  if(pMainWindow->isSingleWindow()) {
+    pChatWindow->setEmbedded(true);
+    pChatWindow->setProperty("manaraPeer", pRemoteUser->id);
+    pMainWindow->embedChat(pChatWindow);
+  }
   if(pMessaging->isLoopback() && pLocalUser->id.compare(pRemoteUser->id) == 0)
     pChatWindow->enableLoopbackEcho();
   qCDebug(lmcApp(), "Chat opened, total=%lld", static_cast<long long>(chatWindows.count()));
 }
 
 void lmcCore::showChatWindow(lmcChatWindow* chatWindow, bool show, bool alert) {
+  if(pMainWindow->isSingleWindow()) {
+    if(show) {
+      pMainWindow->showEmbeddedChat(chatWindow);
+      pMainWindow->restore();
+      chatWindow->focusInput();
+    } else {
+      pMainWindow->embedChat(chatWindow);
+      pMainWindow->showChatIfIdle(chatWindow);
+      pMainWindow->showForChat();
+      if(alert)
+        qApp->alert(pMainWindow);
+    }
+    return;
+  }
   if(show) {
     if(chatWindow->windowState().testFlag(Qt::WindowMinimized))
       chatWindow->setWindowState(chatWindow->windowState() & ~Qt::WindowMinimized);

@@ -247,6 +247,34 @@ void lmcUserTreeWidgetDelegate::paint(QPainter* painter, const QStyleOptionViewI
       textRect = QRect(avatarRect.right() + textGap, card.top(), card.right() - avatarRect.right() - textGap - 8, card.height());
     const int align = (option.direction == Qt::RightToLeft ? Qt::AlignRight : Qt::AlignLeft);
 
+    //	Unread badge at the far end of the card.
+    const int unread = pItem->data(0, UnreadRole).toInt();
+    if(unread > 0) {
+      const QString label = unread > 99 ? QStringLiteral("99+") : QString::number(unread);
+      const int bw = qMax(22, painter->fontMetrics().horizontalAdvance(label) + 14);
+      QRect badge(0, 0, bw, 20);
+      badge.moveCenter(card.center());
+      if(option.direction == Qt::RightToLeft) {
+        badge.moveLeft(card.left() + 10);
+        textRect.setLeft(badge.right() + 8);
+      } else {
+        badge.moveRight(card.right() - 10);
+        textRect.setRight(badge.left() - 8);
+      }
+      painter->save();
+      painter->setOpacity(1.0);
+      painter->setPen(Qt::NoPen);
+      painter->setBrush(QColor(0xE8, 0x59, 0x0C));
+      painter->drawRoundedRect(badge, 10, 10);
+      QFont bf = painter->font();
+      bf.setBold(true);
+      bf.setPointSizeF(qMax(7.0, bf.pointSizeF() - 1.0));
+      painter->setFont(bf);
+      painter->setPen(Qt::white);
+      painter->drawText(badge, Qt::AlignCenter, label);
+      painter->restore();
+    }
+
     QFont nameFont = painter->font();
     nameFont.setBold(true);
     painter->setFont(nameFont);

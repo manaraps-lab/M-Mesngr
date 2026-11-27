@@ -991,6 +991,10 @@
 <context>
     <name>lmcChatWindow</name>
     <message>
+        <source>Close chat</source>
+        <translation>إغلاق المحادثة</translation>
+    </message>
+    <message>
         <source>Group Conversation</source>
         <translation>مجموعة المحادثة</translation>
     </message>
@@ -1162,6 +1166,10 @@ File may not exist, or may not be compatible with this version of %2.</source>
 </context>
 <context>
     <name>lmcMainWindow</name>
+    <message>
+        <source>Select a person from the list to start chatting</source>
+        <translation>اختر شخصاً من القائمة لبدء المحادثة</translation>
+    </message>
     <message>
         <source>Chat</source>
         <translation>محادثة</translation>

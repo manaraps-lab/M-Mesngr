@@ -2,6 +2,7 @@
 // Copyright (c) 2010 - 2012 Qualia Digital Solutions.
 // Copyright (c) 2026 LAN Messenger.
 #include <QTcpServer>
+#include <QHostAddress>
 #include <QTcpSocket>
 #include "core/lmccategories.h"
 #include "core/shared.h"
@@ -335,6 +336,24 @@ void lmcTcpNetwork::receiveMessage(QString* lpszUserId, QString* lpszAddress, QB
 void lmcTcpNetwork::addFileSocket(QString* lpszId, QString* lpszUserId, QTcpSocket* pSocket) {
   FileReceiver* receiver = getReceiver(*lpszId, *lpszUserId);
   if(receiver) {
+    //  Optional hardening (off by default: a peer with several network cards may
+    //  legitimately connect from an address other than the one it was discovered at).
+    lmcSettings settings;
+    if(settings.value(IDS_ENFORCEPEER, IDS_ENFORCEPEER_VAL).toBool()) {
+      QHostAddress expected(receiver->peerAddressText());
+      QHostAddress actual = pSocket->peerAddress();
+      const bool same = (expected.isNull() ? false :
+                         (expected == actual ||
+                          (actual.protocol() == QAbstractSocket::IPv6Protocol && actual.toIPv4Address() != 0 &&
+                           QHostAddress(actual.toIPv4Address()) == expected)));
+      if(!same) {
+        qCWarning(lmcNetTcp(), "Rejecting file connection from %s (expected %s)",
+                  qPrintable(actual.toString()), qPrintable(expected.toString()));
+        pSocket->abort();
+        pSocket->deleteLater();
+        return;
+      }
+    }
     receiver->init(pSocket);
   } else {
     //  No transfer was accepted for this id/user (or it was cancelled).

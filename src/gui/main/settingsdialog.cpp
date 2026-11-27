@@ -16,6 +16,7 @@
 #include <QPalette>
 #include <QIcon>
 #include <QPixmap>
+#include "app/application.h"
 #include "core/shared.h"
 #include "core/lmccategories.h"
 #include "core/settings.h"
@@ -79,7 +80,11 @@ void lmcSettingsDialog::init(void) {
   for(int index = 0; index < Application::availableLanguages().count(); index++) {
     QString langCode = Application::availableLanguages().value(index);
     QLocale locale(langCode);
-    QString language = QLocale::languageToString(locale.language());
+    QString language = locale.nativeLanguageName();
+    if(language.isEmpty())
+      language = QLocale::languageToString(locale.language());
+    else
+      language[0] = language[0].toUpper();
     languages.insert(language, langCode);
   }
   for(int index = 0; index < languages.count(); index++)
@@ -103,10 +108,12 @@ void lmcSettingsDialog::init(void) {
   //  The first addItem auto-selects index 0 and emits currentIndexChanged,
   //  but pSettings does not exist yet, so keep refreshPreview quiet here.
   ui.cboMode->blockSignals(true);
-  ui.cboMode->addItem(tr("System"), QStringLiteral("system"));
   ui.cboMode->addItem(tr("Light"), QStringLiteral("light"));
   ui.cboMode->addItem(tr("Dark"), QStringLiteral("dark"));
   ui.cboMode->blockSignals(false);
+  //  One fixed MANARA theme; only light/dark is offered.
+  ui.lblTheme->setVisible(false);
+  ui.cboTheme->setVisible(false);
 
   fontSize = 0;
   font = QApplication::font();
@@ -495,9 +502,8 @@ void lmcSettingsDialog::setUIText(void) {
   for(int index = 0; index < ULV_Max; index++)
     ui.cboUserListView->setItemText(index, lmcStrings::userListView()[index]);
 
-  ui.cboMode->setItemText(0, tr("System"));
-  ui.cboMode->setItemText(1, tr("Light"));
-  ui.cboMode->setItemText(2, tr("Dark"));
+  ui.cboMode->setItemText(0, tr("Light"));
+  ui.cboMode->setItemText(1, tr("Dark"));
 
   refreshPreview();
 
@@ -611,6 +617,8 @@ void lmcSettingsDialog::loadSettings(void) {
   populateThemes();
   QString appearanceMode =
     pSettings->value(IDS_APPEARANCE_MODE, IDS_APPEARANCE_MODE_VAL).toString();
+  if(appearanceMode != QLatin1String("light") && appearanceMode != QLatin1String("dark"))
+    appearanceMode = Application::wantsDarkStyle() ? QStringLiteral("dark") : QStringLiteral("light");
   int modeIndex = ui.cboMode->findData(appearanceMode);
   ui.cboMode->setCurrentIndex(modeIndex != -1 ? modeIndex : 0);
 
@@ -728,6 +736,8 @@ void lmcSettingsDialog::saveSettings(void) {
   pSettings->setValue(IDS_THEME, ui.cboTheme->currentData().toString(), IDS_THEME_VAL);
   pSettings->setValue(IDS_APPEARANCE_MODE, ui.cboMode->currentData().toString(),
                       IDS_APPEARANCE_MODE_VAL);
+  pSettings->sync();
+  Application::applyBuiltInStyle();
 
   pSettings->setValue(IDS_SENDKEYMOD, ui.rdbCmdEnter->isChecked(), IDS_SENDKEYMOD_VAL);
 

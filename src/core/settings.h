@@ -17,6 +17,10 @@
 #define IDS_SAVEPATH "Application/SavePath"
 #define IDS_SAVEPATH_VAL QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation)
 #define IDS_WINDOWMAIN "Window/Main"
+#define IDS_ENFORCEPEER "Security/EnforcePeerAddress"
+#define IDS_ENFORCEPEER_VAL false
+#define IDS_SINGLEWINDOW "Window/SingleWindow"
+#define IDS_SINGLEWINDOW_VAL true
 #define IDS_WINDOWTRANSFERS "Window/Transfers"
 #define IDS_WINDOWHISTORY "Window/History"
 #define IDS_WINDOWBROADCAST "Window/Broadcast"

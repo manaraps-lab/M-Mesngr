@@ -65,7 +65,8 @@ enum ItemDataRole {
   StatusRole,                //	Status of the User
   AvatarRole,                //	Avatar image of the User
   SubtextRole,               //	Subtext to be displayed on the item
-  CapsRole                   //  The capabilities of the user
+  CapsRole,                  //  The capabilities of the user
+  UnreadRole                 //  Number of unread incoming items (messages / file offers)
 };
 
 //	font size definitions

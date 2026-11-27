@@ -6,6 +6,10 @@
 #include <QFileInfo>
 #include <QTranslator>
 #include "application.h"
+#include <QFile>
+#include <QStyleHints>
+#include <QGuiApplication>
+#include "core/settings.h"
 #include "singleinstance.h"
 
 #define IDS_LANGUAGE_VAL "en_US"
@@ -74,6 +78,11 @@ void Application::loadTranslations(const QDir& dir) {
     QTranslator* translator = new QTranslator(instance());
     if(translator->load(file.absoluteFilePath())) {
       QString locale = language + "_" + country;
+      //  MANARA ships Arabic and English only.
+      if(locale != QLatin1String("ar_SA")) {
+        delete translator;
+        continue;
+      }
       delete translators.take(locale);
       translators.insert(locale, translator);
       if(!locales.contains(locale))
@@ -136,4 +145,21 @@ void Application::setLanguage(const QString& locale) {
   current = translators.value(locale, nullptr);
   if(current)
     installTranslator(current);
+}
+
+bool Application::wantsDarkStyle() {
+  lmcSettings settings;
+  const QString mode = settings.value(IDS_APPEARANCE_MODE, IDS_APPEARANCE_MODE_VAL).toString();
+  if(mode == QLatin1String("dark"))
+    return true;
+  if(mode == QLatin1String("light"))
+    return false;
+  return QGuiApplication::styleHints()->colorScheme() == Qt::ColorScheme::Dark;
+}
+
+void Application::applyBuiltInStyle() {
+  const bool dark = wantsDarkStyle();
+  QFile builtin(dark ? QStringLiteral(":/qss/manara-dark.qss") : QStringLiteral(":/qss/manara-light.qss"));
+  if(builtin.open(QIODevice::ReadOnly | QIODevice::Text))
+    qApp->setStyleSheet(QString::fromUtf8(builtin.readAll()));
 }

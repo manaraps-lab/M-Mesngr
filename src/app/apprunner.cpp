@@ -71,12 +71,8 @@ static void applyCustomQss(Application& application) {
   QFile file(path);
   if(!file.exists()) {
     //  No user override: apply MANARA's built-in style sheet for the system scheme.
-    const bool dark = QGuiApplication::styleHints()->colorScheme() == Qt::ColorScheme::Dark;
-    QFile builtin(dark ? QStringLiteral(":/qss/manara-dark.qss") : QStringLiteral(":/qss/manara-light.qss"));
-    if(builtin.open(QIODevice::ReadOnly | QIODevice::Text)) {
-      application.setStyleSheet(QString::fromUtf8(builtin.readAll()));
-      qCInfo(lmcApp(), "Style: built-in MANARA %s style applied", dark ? "dark" : "light");
-    }
+    Application::applyBuiltInStyle();
+    qCInfo(lmcApp(), "Style: built-in MANARA style applied");
     return;
   }
   if(!file.open(QIODevice::ReadOnly | QIODevice::Text)) {

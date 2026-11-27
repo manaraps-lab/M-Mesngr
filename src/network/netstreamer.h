@@ -95,6 +95,8 @@ public:
   void setDigestEnabled(bool enabled);
   //  Expect AES-256-GCM records (see FileCipher) instead of raw content.
   void setEncryptionKey(const QByteArray& key);
+  //  Address the peer was discovered at (used by the optional peer-address check).
+  QString peerAddressText() const { return address; }
 
   QString id;
   QString peerId;

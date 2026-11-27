@@ -28,11 +28,24 @@ class QPoint;
 class QRect;
 class QEvent;
 class QCloseEvent;
+class QSplitter;
+class QStackedWidget;
+class QVBoxLayout;
 
 class lmcMainWindow : public QWidget {
   Q_OBJECT
 
 public:
+  //  Single-window mode: one-to-one chats live in a pane next to the people list.
+  bool isSingleWindow() const { return singleWindow; }
+  void embedChat(QWidget* chat);
+  void showEmbeddedChat(QWidget* chat);
+  void showForChat();
+  //  If no conversation is open yet, open this one so a new message is visible at once.
+  void showChatIfIdle(QWidget* chat);
+  //  Unread badges. incoming(): count it unless that chat is on screen and the window is active.
+  void noteIncoming(const QString& userId, QWidget* chat, bool isFile);
+  void clearUnread(const QString& userId);
   lmcMainWindow(QWidget* parent = 0, Qt::WindowFlags flags = Qt::WindowFlags());
   ~lmcMainWindow(void);
 
@@ -130,6 +143,15 @@ private:
   void setTrayTooltip(void);
 
   Ui::MainWindow ui;
+  bool singleWindow = true;
+  QWidget* sidebar = nullptr;
+  QVBoxLayout* sideBox = nullptr;
+  QSplitter* splitter = nullptr;
+  QStackedWidget* chatStack = nullptr;
+  QWidget* chatPlaceholder = nullptr;
+  QLabel* chatHint = nullptr;
+  void setUnread(const QString& userId, int count);
+  int unreadOf(const QString& userId);
   lmcSettings* pSettings;
   QMenuBar* pMainMenu;
   QLineEdit* txtSearch = nullptr;

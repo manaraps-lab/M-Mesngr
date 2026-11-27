@@ -139,7 +139,26 @@ void lmcChatWindow::createHeader(User* pRemoteUser) {
 
   row->addWidget(avatar);
   row->addLayout(text, 1);
+  QToolButton* closeBtn = new QToolButton(bar);
+  closeBtn->setObjectName("chatCloseBtn");
+  closeBtn->setText(QStringLiteral("\u2715"));
+  closeBtn->setToolTip(tr("Close chat"));
+  closeBtn->setCursor(Qt::PointingHandCursor);
+  closeBtn->setAutoRaise(true);
+  closeBtn->setVisible(false);
+  connect(closeBtn, &QToolButton::clicked, this, [this]() { this->close(); });
+  btnCloseChat = closeBtn;
+  row->addWidget(closeBtn);
   box->insertWidget(0, bar);
+}
+
+void lmcChatWindow::setEmbedded(bool embedded) {
+  if(btnCloseChat)
+    btnCloseChat->setVisible(embedded);
+}
+
+void lmcChatWindow::focusInput() {
+  ui.txtMessage->setFocus();
 }
 
 void lmcChatWindow::init(User* pLocalUser, User* pRemoteUser, bool connected) {

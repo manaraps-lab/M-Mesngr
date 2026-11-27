@@ -31,6 +31,10 @@ public:
 
 public slots:
   static void setLanguage(const QString& locale);
+  //  Dark when the saved mode says so, or when it is automatic and the system is dark.
+  static bool wantsDarkStyle();
+  //  Applies MANARA's built-in style sheet (unless the user has a custom.qss).
+  static void applyBuiltInStyle();
 
 Q_SIGNALS:
   void messageReceived(const QString& message);

@@ -317,7 +317,8 @@ add_custom_command(
 # The lrelease output keeps the runtime layout: lang/*.qm
 # (sysLangDir candidates, stdlocation.h).
 file(GLOB LMC_TS_FILES CONFIGURE_DEPENDS
-     ${CMAKE_SOURCE_DIR}/translations/lmc_*.ts)
+     ${CMAKE_SOURCE_DIR}/translations/lmc_ar_SA.ts
+     ${CMAKE_SOURCE_DIR}/translations/lmc_en_US.ts)
 list(SORT LMC_TS_FILES)
 
 set(LMC_QM_OUTPUTS "")

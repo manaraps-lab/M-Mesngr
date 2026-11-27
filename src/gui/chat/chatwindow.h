@@ -34,6 +34,9 @@ class lmcChatWindow : public QWidget {
   Q_OBJECT
 
 public:
+  //  Embedded in the main window: shows a close button in the header.
+  void setEmbedded(bool embedded);
+  void focusInput();
   lmcChatWindow(QWidget* parent = 0, Qt::WindowFlags flags = Qt::WindowFlags());
   ~lmcChatWindow(void);
 
@@ -82,6 +85,7 @@ private slots:
   void checkChatState(void);
 
 private:
+  QAbstractButton* btnCloseChat = nullptr;
   void createEmojiMenu(void);
   void createToolBar(void);
   void createHeader(User* pRemoteUser);

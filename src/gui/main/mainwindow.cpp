@@ -2,6 +2,8 @@
 // Copyright (c) 2010 - 2012 Qualia Digital Solutions.
 // Copyright (c) 2026 LAN Messenger.
 #include "mainwindow.h"
+#include <QStackedWidget>
+#include <QSplitter>
 #include <QDesktopServices>
 #include <QLabel>
 #include <QLineEdit>
@@ -43,6 +45,63 @@
 lmcMainWindow::lmcMainWindow(QWidget* parent, Qt::WindowFlags flags)
     : QWidget(parent, flags) {
   ui.setupUi(this);
+
+  //  Re-home the people list into a sidebar so a chat pane can sit beside it.
+  {
+    lmcSettings modeSettings;
+    singleWindow = modeSettings.value(IDS_SINGLEWINDOW, IDS_SINGLEWINDOW_VAL).toBool();
+  }
+  sidebar = new QWidget(this);
+  sidebar->setObjectName("wgtSidebar");
+  sideBox = new QVBoxLayout(sidebar);
+  sideBox->setContentsMargins(0, 0, 0, 0);
+  sideBox->setSpacing(0);
+  if(QLayout* old = layout()) {
+    while(QLayoutItem* item = old->takeAt(0)) {
+      if(item->widget())
+        sideBox->addWidget(item->widget());
+      else
+        sideBox->addItem(item);
+    }
+    delete old;
+  }
+  QVBoxLayout* outer = new QVBoxLayout(this);
+  outer->setContentsMargins(0, 0, 0, 0);
+  outer->setSpacing(0);
+  splitter = new QSplitter(Qt::Horizontal, this);
+  splitter->setObjectName("mainSplitter");
+  splitter->setChildrenCollapsible(false);
+  splitter->setHandleWidth(1);
+  splitter->addWidget(sidebar);
+  chatStack = new QStackedWidget(splitter);
+  chatStack->setObjectName("chatStack");
+  chatPlaceholder = new QWidget(chatStack);
+  chatPlaceholder->setObjectName("chatPlaceholder");
+  {
+    QVBoxLayout* pl = new QVBoxLayout(chatPlaceholder);
+    pl->addStretch(1);
+    QLabel* logo = new QLabel(chatPlaceholder);
+    logo->setAlignment(Qt::AlignCenter);
+    QPixmap lp(IDR_LOGO, "PNG");
+    if(!lp.isNull())
+      logo->setPixmap(lp.scaledToHeight(96, Qt::SmoothTransformation));
+    QLabel* hint = new QLabel(tr("Select a person from the list to start chatting"), chatPlaceholder);
+    chatHint = hint;
+    hint->setObjectName("chatPlaceholderText");
+    hint->setAlignment(Qt::AlignCenter);
+    hint->setWordWrap(true);
+    pl->addWidget(logo);
+    pl->addWidget(hint);
+    pl->addStretch(1);
+  }
+  chatStack->addWidget(chatPlaceholder);
+  splitter->addWidget(chatStack);
+  splitter->setStretchFactor(0, 0);
+  splitter->setStretchFactor(1, 1);
+  sidebar->setMinimumWidth(300);
+  sidebar->setMaximumWidth(460);
+  chatStack->setVisible(singleWindow);
+  outer->addWidget(splitter);
 
   connect(ui.tvUserList, &QTreeWidget::itemActivated,
           this, &lmcMainWindow::tvUserList_itemActivated);
@@ -105,6 +164,12 @@ void lmcMainWindow::init(User* pLocalUser, QList<Group>* pGroupList, bool connec
   pSoundPlayer = new lmcSoundPlayer();
   pSettings = new lmcSettings();
   restoreGeometry(pSettings->value(IDS_WINDOWMAIN).toByteArray());
+  if(singleWindow) {
+    setMinimumSize(880, 520);
+    if(width() < 960 || height() < 600)
+      resize(1040, 680);
+    splitter->setSizes(QList<int>() << 340 << 700);
+  }
   //	get saved settings
   settingsChanged(true);
   setUIText();
@@ -123,6 +188,69 @@ void lmcMainWindow::start(void) {
   pTrayIcon->setVisible(showSysTray);
   if(pSettings->value(IDS_AUTOSHOW, IDS_AUTOSHOW_VAL).toBool())
     show();
+}
+
+void lmcMainWindow::embedChat(QWidget* chat) {
+  if(!chatStack || chatStack->indexOf(chat) != -1)
+    return;
+  chatStack->addWidget(chat);
+  //  When the chat is closed (deleted) fall back to the neighbour or the hint page.
+  connect(chat, &QObject::destroyed, this, [this]() {
+    if(chatStack && chatStack->currentWidget() == nullptr)
+      chatStack->setCurrentWidget(chatPlaceholder);
+  });
+}
+
+void lmcMainWindow::showEmbeddedChat(QWidget* chat) {
+  embedChat(chat);
+  chatStack->setCurrentWidget(chat);
+  chat->show();
+  clearUnread(chat->property("manaraPeer").toString());
+}
+
+void lmcMainWindow::setUnread(const QString& userId, int count) {
+  QTreeWidgetItem* item = getUserItem(const_cast<QString*>(&userId));
+  if(!item)
+    return;
+  item->setData(0, UnreadRole, count);
+  ui.tvUserList->viewport()->update();
+}
+
+int lmcMainWindow::unreadOf(const QString& userId) {
+  QTreeWidgetItem* item = getUserItem(const_cast<QString*>(&userId));
+  return item ? item->data(0, UnreadRole).toInt() : 0;
+}
+
+void lmcMainWindow::noteIncoming(const QString& userId, QWidget* chat, bool isFile) {
+  if(!chatStack)
+    return;
+  const bool seen = chatStack->currentWidget() == chat && isActiveWindow() && !isMinimized() && !isHidden();
+  if(seen)
+    return;
+  setUnread(userId, unreadOf(userId) + 1);
+  if(isFile && !isActiveWindow()) {
+    QTreeWidgetItem* item = getUserItem(const_cast<QString*>(&userId));
+    const QString who = item ? item->text(0) : userId;
+    showTrayMessage(TM_Transfer, tr("%1 wants to send you a file").arg(who));
+  }
+}
+
+void lmcMainWindow::clearUnread(const QString& userId) {
+  if(unreadOf(userId) > 0)
+    setUnread(userId, 0);
+}
+
+void lmcMainWindow::showChatIfIdle(QWidget* chat) {
+  if(chatStack && chatStack->currentWidget() == chatPlaceholder)
+    showEmbeddedChat(chat);
+}
+
+void lmcMainWindow::showForChat() {
+  //  Same idea as the old minimised chat window: make sure the user can notice it.
+  if(isHidden()) {
+    setWindowState(windowState() | Qt::WindowMinimized);
+    show();
+  }
 }
 
 void lmcMainWindow::show(void) {
@@ -420,6 +548,10 @@ void lmcMainWindow::changeEvent(QEvent* pEvent) {
         showMinimizeMessage();
       }
     }
+    break;
+  case QEvent::ActivationChange:
+    if(isActiveWindow() && chatStack && chatStack->currentWidget() != chatPlaceholder)
+      clearUnread(chatStack->currentWidget()->property("manaraPeer").toString());
     break;
   case QEvent::LanguageChange:
     setUIText();
@@ -758,13 +890,13 @@ void lmcMainWindow::createBrandBar(void) {
   menuButton->setMenu(allMenus);
   row->addWidget(menuButton);
 
-  QVBoxLayout* box = qobject_cast<QVBoxLayout*>(layout());
+  QVBoxLayout* box = sideBox;
   if(box)
     box->insertWidget(0, bar);
 }
 
 void lmcMainWindow::createSearchAndEmptyState(void) {
-  QVBoxLayout* box = qobject_cast<QVBoxLayout*>(layout());
+  QVBoxLayout* box = sideBox;
   if(!box)
     return;
   const int treeIndex = box->indexOf(ui.tvUserList);
@@ -1028,6 +1160,8 @@ void lmcMainWindow::createToolBar(void) {
 }
 
 void lmcMainWindow::setUIText(void) {
+  if(chatHint)
+    chatHint->setText(tr("Select a person from the list to start chatting"));
   ui.retranslateUi(this);
 
   setWindowTitle(lmcStrings::appName());

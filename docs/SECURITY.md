@@ -30,9 +30,11 @@ Source of the findings: docs/PHASE1_SOURCE_REVIEW.md (S1–S8).
   mock peers only; not yet on two Windows PCs.
 * Text encryption is RSA-2048/OAEP-SHA1 + AES-256-CBC with EVP_BytesToKey and
   no MAC (upstream design). Not changed here.
-* The file-transfer socket is matched by file id + user id only; the peer
-  address is **not** enforced (multi-homed hosts would break). The 32-char id is
-  unguessable in practice but is not an authentication token.
+* The file-transfer socket is matched by file id + user id. An **optional** check
+  (`Security/EnforcePeerAddress=true` in the settings file, default **off**) also
+  requires the connecting address to equal the address the peer was discovered
+  at. It is off by default because a peer with several network cards may connect
+  from another address. Not yet tested on real networks.
 * No "Private network only" enforcement inside the app; the installer adds
   firewall rules for the **Private** profile only (setup/win32/setup.nsi).
 

@@ -95,3 +95,9 @@ QPushButton#btnWelcomeStart { background: #1E4FC2; color: #FFFFFF; border: none;
 QPushButton#btnWelcomeStart:hover { background: #F28C28; }
 
 QWidget#wgtToolBar QToolBar { padding: 0 10px; border: none; }
+
+QWidget#chatPlaceholder { background: #F5F7FB; }
+QLabel#chatPlaceholderText { color: #5B6B8C; font-size: 15px; }
+QSplitter#mainSplitter::handle { background: #DDE3EF; }
+QToolButton#chatCloseBtn { color: #5B6B8C; border: none; border-radius: 14px; min-width: 28px; min-height: 28px; font-size: 14px; }
+QToolButton#chatCloseBtn:hover { background: #E3E9F5; color: #E8590C; }

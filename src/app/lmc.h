@@ -74,6 +74,7 @@ private:
   void settingsChanged(void);
   void processMessage(MessageType type, QString* lpszUserId, XmlMessage* pMessage);
   void processFile(MessageType type, QString* lpszUserId, XmlMessage* pMessage);
+  void noteIncomingForBadge(lmcChatWindow* chat, MessageType type, QString* lpszUserId, XmlMessage* pMessage);
   void routeMessage(MessageType type, QString* lpszUserId, XmlMessage* pMessage);
   void routeGroupMessage(MessageType type, QString* lpszUserId, XmlMessage* pMessage);
   void processPublicMessage(MessageType type, QString* lpszUserId, XmlMessage* pMessage);
